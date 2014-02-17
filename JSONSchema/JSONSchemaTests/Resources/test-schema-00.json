@@ -1,0 +1,20 @@
+{
+    "id": "http://example.com/test-schema-00.json#",
+    "type": "object",
+    "properties": {
+        "numericProperty": {
+            "$ref": "#/definitions/testReference"
+        },
+        "stringProperty": {
+            "minLength": 3
+        }
+    },
+    "definitions": {
+        "testReference": {
+            "type": [
+                "number",
+                "integer"
+            ]
+        }
+    }
+}
