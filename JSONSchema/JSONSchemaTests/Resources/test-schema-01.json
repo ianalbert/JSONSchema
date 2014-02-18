@@ -1,0 +1,161 @@
+{
+    "id": "local://complete.json#",
+    "type": "object",
+    "properties": {
+        "requiredProperty": {
+            "type": "string",
+            "enum": [
+                "requiredValue"
+            ]
+        }
+    },
+    "patternProperties": {
+        "^i[0-9]+$": {
+            "$ref": "#/definitions/testIntegerValue"
+        },
+        "^n[0-9]+$": {
+            "$ref": "#/definitions/testNumberValue"
+        },
+        "^b[0-9]+$": {
+            "$ref": "#/definitions/testBooleanValue"
+        },
+        "^s[0-9]+$": {
+            "$ref": "#/definitions/testStringValue"
+        },
+        "^a[0-9]+$": {
+            "$ref": "#/definitions/testArrayValue"
+        },
+        "^o[0-9]+$": {
+            "$ref": "#/definitions/testObjectValue"
+        },
+        "^es[0-9]+$": {
+            "$ref": "#/definitions/testStringEnumValue"
+        },
+        "^ei[0-9]+$": {
+            "$ref": "#/definitions/testIntegerEnumValue"
+        },
+        "^any[0-9]+$": {
+            "$ref": "#/definitions/testAnyOfValue"
+        },
+        "^all[0-9]+$": {
+            "$ref": "#/definitions/testAllOfValue"
+        },
+        "^one[0-9]+$": {
+            "$ref": "#/definitions/testOneOfValue"
+        },
+        "^not[0-9]+$": {
+            "$ref": "#/definitions/testNotValue"
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "requiredProperty"
+    ],
+    "definitions": {
+        "testIntegerValue": {
+            "type": "integer",
+            "multipleOf": 3,
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 99,
+            "exclusiveMaximum": false
+        },
+        "testNumberValue": {
+            "type": "number",
+            "multipleOf": 0.25,
+            "minimum": 0.00,
+            "maximum": 100.00
+        },
+        "testBooleanValue": {
+            "type": "boolean"
+        },
+        "testStringValue": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10,
+            "pattern": "^[a-z][a-z][a-z][0-9][0-9][0-9]$"
+        },
+        "testArrayValue": {
+            "type": "array",
+            "items": [
+                {
+                    "title": "First",
+                    "type": "string"
+                },
+                {
+                    "title": "Second",
+                    "type": "number"
+                }
+            ],
+            "additionalItems": {
+                "type": "boolean"
+            },
+            "minItems": 3,
+            "maxItems": 8,
+            "uniqueItems": true
+        },
+        "testObjectValue": {
+            "type": "object",
+            "minProperties": 1,
+            "maxProperties": 10
+        },
+        "testStringEnumValue": {
+            "type": "string",
+            "enum": [
+                "alpha",
+                "bravo",
+                "charlie",
+                "delta",
+                "echo"
+            ]
+        },
+        "testIntegerEnumValue": {
+            "type": "integer",
+            "enum": [
+                1,
+                2,
+                3,
+                5,
+                8,
+                13,
+                21,
+                34
+            ]
+        },
+        "testAllOfValue": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/testIntegerValue"
+                },
+                {
+                    "multipleOf": 9
+                }
+            ]
+        },
+        "testAnyOfValue": {
+            "anyOf": [
+                {
+                    "$ref": "#/definitions/testIntegerValue"
+                },
+                {
+                    "multipleOf": 9
+                }
+            ]
+        },
+        "testOneOfValue": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/testIntegerValue"
+                },
+                {
+                    "multipleOf": 9
+                }
+            ]
+        },
+        "testNotValue": {
+            "not": {
+                "$ref": "#/definitions/testIntegerValue"
+            }
+        }
+    }
+}

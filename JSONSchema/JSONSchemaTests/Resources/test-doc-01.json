@@ -1,0 +1,28 @@
+{
+    "requiredProperty": "requiredValue",
+    "i00": 3,
+    "i01": 6,
+    "i02": 99,
+    "n00": 0.00,
+    "n01": 37.25,
+    "n02": 100.0,
+    "b00": true,
+    "b01": false,
+    "s00": "gar286",
+    "s01": "omw819",
+    "a00": [
+        "any string",
+        123,
+        false,
+        true
+    ],
+    "o00": {
+        "foo": "bar",
+        "baz": 0
+    },
+    "es00": "alpha",
+    "es01": "charlie",
+    "ei00": 1,
+    "ei01": 8,
+    "ei02": 13
+}

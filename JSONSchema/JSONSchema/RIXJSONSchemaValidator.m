@@ -9,6 +9,7 @@
 #import "RIXJSONSchemaValidator.h"
 
 NSString *const RIXJSONSchemaValidatorErrorDomain = @"RIXJSONSchemaValidatorError";
+NSString *const RIXJSONSchemaValidatorErrorJSONPointerKey = @"JSONPointer";
 
 typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     RIXJSONDataTypeUnknown = 0,
@@ -385,6 +386,7 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
 @property (nonatomic, weak) RIXJSONSchemaValidator *validator;
 @property (nonatomic, strong) NSMutableArray *errors;
 @property (nonatomic, strong) NSMutableArray *schemaStack; // RIXJSONSchemaValidatorSchema[]
+@property (nonatomic, strong) NSMutableArray *currentJSONPath; // NSString or NSNumber
 @end
 @implementation RIXJSONSchemaValidatorContext
 
@@ -395,6 +397,7 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     if (self) {
         _schemaStack = [[NSMutableArray alloc] initWithObjects:schema, nil];
         _validator = validator;
+        _currentJSONPath = [[NSMutableArray alloc] init];
     }
     return self;
 }
@@ -410,6 +413,8 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
         va_end(args);
         userInfo[NSLocalizedDescriptionKey] = message;
     }
+    NSString *path = (_currentJSONPath.count > 0) ? [@"/" stringByAppendingString:[_currentJSONPath componentsJoinedByString:@"/"]] : @"";
+    userInfo[RIXJSONSchemaValidatorErrorJSONPointerKey] = path;
     NSError *error = [NSError errorWithDomain:RIXJSONSchemaValidatorErrorDomain code:errorCode userInfo:userInfo];
     if (!self.errors) {
         self.errors = [[NSMutableArray alloc] init];
@@ -482,11 +487,13 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     NSURL *URI = [topSchema.URI URIRelativeToJSONReference:[NSString stringWithFormat:@"#%@", pathComponent]];
     RIXJSONSchemaValidatorSchema *schemaObj = [[RIXJSONSchemaValidatorSchema alloc] initWithSchema:schema URI:URI validator:_validator];
     [_schemaStack addObject:schemaObj];
+    [_currentJSONPath addObject:pathComponent];
 }
 
 - (void)pop
 {
     [_schemaStack removeLastObject];
+    [_currentJSONPath removeLastObject];
 }
 
 @end
@@ -688,7 +695,8 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
             }
         }
         else {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorArrayAdditionalElementsInvalid message:@"Additional array elements not permitted"];
+            [context addErrorCode:RIXJSONSchemaValidatorErrorArrayAdditionalElementsInvalid message:@"Array must not contain additional elements"];
+            *stop = YES;
         }
     }];
 }
@@ -697,13 +705,27 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
                    context:(RIXJSONSchemaValidatorContext *)context
 {
     double val = [number doubleValue];
+
     NSNumber *multipleOf = context[keyNumberMultipleOf];
     if (multipleOf) {
-        double mult = [multipleOf doubleValue];
-        double mod = fmod(val, mult);
-#warning TODO: Figure out best way to do fuzzy float compare
-        if (mod != 0.0) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorNumberNotAMultiple message:@"%f is not a multiple of %f", val, mult];
+        if (([number JSONDataType] & RIXJSONDataTypeInteger) && ([multipleOf JSONDataType] & RIXJSONDataTypeInteger)) {
+            // Do an integer modulo if possible
+            long long val = [number longLongValue];
+            long long mult = [multipleOf longLongValue];
+            long long mod = val % mult;
+            if (mod != 0) {
+                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberNotAMultiple message:@"%lli must be a multiple of %lli", val, mult];
+            }
+        }
+        else {
+            // Do a floating point modulo
+            double mult = [multipleOf doubleValue];
+            double mod = fmod(val, mult);
+            // XXX: Would like to add some +/- ULP tolerance here but don't know
+            // the best way to do so.
+            if (mod != 0.0) {
+                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberNotAMultiple message:@"%f must be a multiple of %f", val, mult];
+            }
         }
     }
 
@@ -759,8 +781,8 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
 
     NSString *pattern = context[keyStringPattern];
     if (pattern) {
-        if ([self doesString:string matchPattern:pattern]) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern message:@"String does not match regular expression \"%@\"", pattern];
+        if (![self doesString:string matchPattern:pattern]) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern message:@"String must match regular expression /%@/", pattern];
         }
     }
 }

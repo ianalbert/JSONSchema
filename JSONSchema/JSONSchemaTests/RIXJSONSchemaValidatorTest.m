@@ -31,20 +31,33 @@
 - (void)test00
 {
     NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-00"];
-    XCTAssertNotNil(schemaDict, @"Could not load schema");
     id doc = [self loadJSONWithName:@"test-doc-00"];
-    XCTAssertNotNil(doc, @"Could not load document");
     RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
     NSArray *errors = [validator validateJSONValue:doc];
-    XCTAssertTrue(errors.count == 0, @"Found unexpected errors");
+    XCTAssertTrue(errors.count == 0, @"Found unexpected errors %@", errors);
+}
+
+- (void)test01
+{
+    NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-01"];
+    id doc = [self loadJSONWithName:@"test-doc-01"];
+    RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
+    NSArray *errors = [validator validateJSONValue:doc];
+    XCTAssertTrue(errors.count == 0, @"Found unexpected errors %@", errors);
 }
 
 - (id)loadJSONWithName:(NSString *)name
 {
     NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.rixafrix.JSONSchemaTests"];
+    XCTAssertNotNil(bundle, @"Could not create bundle");
     NSString *path = [bundle pathForResource:name ofType:@"json"];
+    XCTAssertNotNil(path, @"Could not resolve path for %@.json", name);
     NSData *data = [NSData dataWithContentsOfFile:path];
-    id value = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    XCTAssertNotNil(data, @"Could not load data for %@.json", name);
+    NSError *JSONError = nil;
+    id value = [NSJSONSerialization JSONObjectWithData:data options:0 error:&JSONError];
+    XCTAssertNotNil(value, @"Could not load %@.json", name);
+    XCTAssertNil(JSONError, @"Encountered JSON parsing error %@", JSONError);
     return value;
 }
 

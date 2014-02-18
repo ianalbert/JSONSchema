@@ -12,6 +12,7 @@
  * The NSError domain for errors from RIXJSONSchemaValidator.
  */
 extern NSString *const RIXJSONSchemaValidatorErrorDomain;
+extern NSString *const RIXJSONSchemaValidatorErrorJSONPointerKey;
 
 // NSError status codes for domain RIXJSONSchemaValidatorErrorDomain
 enum {
