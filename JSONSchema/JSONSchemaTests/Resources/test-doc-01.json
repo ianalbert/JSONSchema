@@ -34,5 +34,15 @@
     "one00": 6,
     "one01": 108,
     "not00": 43,
-    "not01": 1
+    "not01": 1,
+    "ad00": {
+        "alpha": true,
+        "bravo": true,
+        "charlie": true
+    },
+    "sd00": {
+        "alpha": true,
+        "bravo": 25,
+        "charlie": "ABC"
+    }
 }

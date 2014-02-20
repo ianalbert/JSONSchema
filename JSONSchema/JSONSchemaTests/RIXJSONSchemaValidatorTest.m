@@ -132,6 +132,15 @@
 
     RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedNot, @"/not00");
 
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad00");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad01");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad02");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad02"); // two missing properties
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/sd00");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/sd01");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/sd02");
+
     // We should have accounted for every error already.
     XCTAssertEqualObjects(@[], errors, @"");
 }

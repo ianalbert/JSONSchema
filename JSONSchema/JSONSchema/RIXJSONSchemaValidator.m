@@ -770,7 +770,36 @@ documentPathComponent:(id)pathComponent
             }
         }
     }];
-#warning TODO: dependencies
+
+    NSDictionary *dependencies = context[keyObjectDependencies];
+    if (dependencies) {
+        [dependencies enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
+            if (!object[key]) {
+                // Key isn't present
+                return;
+            }
+            if ([obj JSONDataType] == RIXJSONDataTypeObject) {
+                // Current object must validate against given schema
+                [context pushErrors];
+                [context pushSchema:obj documentPathComponent:nil schemaPathSegment:[NSString stringWithFormat:@"%@/%@", keyObjectDependencies, [key stringByAddingJSONPointerEscapes]]];
+                [self validateJSONObject:object context:context];
+                NSArray *errors = [context currentErrors];
+                [context pop];
+                [context popErrors];
+                if (errors.count > 0) {
+                    [context addErrorCode:RIXJSONSchemaValidatorErrorObjectFailedDependency message:@"Object must validate against schema in \"dependencies/%@\" when \"%@\" is present in object", key, key];
+                }
+            }
+            else if ([obj JSONDataType] == RIXJSONDataTypeArray) {
+                // Current object must also contain values for all the property names in this array
+                for (id elem in obj) {
+                    if (!object[elem]) {
+                        [context addErrorCode:RIXJSONSchemaValidatorErrorObjectFailedDependency message:@"Property \"%@\" must be present when \"%@\" is present", elem, key];
+                    }
+                }
+            }
+        }];
+    }
 }
 
 - (void)validateJSONArray:(NSArray *)array

@@ -5,20 +5,24 @@
     "i03": 102,
     "i04": 0,
     "i05": 0.123,
+
     "n00": "wrong datatype",
     "n01": 0.125,
     "n02": -0.25,
     "n03": 100.25,
+
     "b00": "wrong datatype",
     "b01": 2,
     "b02": 1,
     "b03": 0,
+
     "s00": 123,
     "s01": "",
     "s02": "12345678901234567890",
     "s03": "123xyz",
     "s04": "abc1234",
     "s05": "abcd123",
+
     "a00": [],
     "a01": [
         "too many items",
@@ -42,6 +46,7 @@
         "same",
         "same"
     ],
+
     "o00": {},
     "o01": {
         "a": 0,
@@ -56,17 +61,48 @@
         "j": 9,
         "k": 10
     },
+
     "es00": "foxtrot",
     "es01": 123,
     "ei00": 55,
     "ei01": "string",
+
     "any00": 1,
     "any01": "string",
+
     "all00": 3,
     "all01": 108,
     "all02": 1,
     "all03": "string",
+
     "one00": 1,
     "one01": 27,
-    "not00": 9
+
+    "not00": 9,
+
+    "ad00": {
+        "alpha": true,
+        "bravo": []
+    },
+    "ad01": {
+        "alpha": true,
+        "charlie": false
+    },
+    "ad02": {
+        "alpha": true
+    },
+
+    "sd00": {
+        "alpha": true
+    },
+    "sd01": {
+        "alpha": true,
+        "bravo": "wrong type",
+        "charlie": "AAA"
+    },
+    "sd02": {
+        "alpha": true,
+        "bravo": 10,
+        "charlie": "pattern mismatch"
+    }
 }
