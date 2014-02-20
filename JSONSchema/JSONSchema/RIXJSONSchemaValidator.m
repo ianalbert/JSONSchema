@@ -81,6 +81,65 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
 #define valueFormatIPV6 @"ipv6"
 #define valueFormatURI @"uri"
 
+RIXJSONDataType RIXJSONDataTypeFromString(NSString *string) {
+    if ([string isEqualToString:valueDatatypeArray]) {
+        return RIXJSONDataTypeArray;
+    }
+    if ([string isEqualToString:valueDatatypeBoolean]) {
+        return RIXJSONDataTypeBoolean;
+    }
+    if ([string isEqualToString:valueDatatypeInteger]) {
+        return RIXJSONDataTypeInteger;
+    }
+    if ([string isEqualToString:valueDatatypeNull]) {
+        return RIXJSONDataTypeNull;
+    }
+    if ([string isEqualToString:valueDatatypeNumber]) {
+        return RIXJSONDataTypeNumber;
+    }
+    if ([string isEqualToString:valueDatatypeObject]) {
+        return RIXJSONDataTypeObject;
+    }
+    if ([string isEqualToString:valueDatatypeString]) {
+        return RIXJSONDataTypeString;
+    }
+    return RIXJSONDataTypeUnknown;
+}
+
+RIXJSONDataType RIXJSONDataTypeFromStrings(NSArray *strings) {
+    RIXJSONDataType dataTypeMask = 0;
+    for (NSString *string in strings) {
+        dataTypeMask |= RIXJSONDataTypeFromString(string);
+    }
+    return dataTypeMask;
+}
+
+NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
+    NSMutableArray *names = [[NSMutableArray alloc] initWithCapacity:7];
+    if (dataType & RIXJSONDataTypeArray) {
+        [names addObject:valueDatatypeArray];
+    }
+    if (dataType & RIXJSONDataTypeBoolean) {
+        [names addObject:valueDatatypeBoolean];
+    }
+    if (dataType & RIXJSONDataTypeInteger) {
+        [names addObject:valueDatatypeInteger];
+    }
+    if (dataType & RIXJSONDataTypeNull) {
+        [names addObject:valueDatatypeNull];
+    }
+    if (dataType & RIXJSONDataTypeNumber) {
+        [names addObject:valueDatatypeNumber];
+    }
+    if (dataType & RIXJSONDataTypeObject) {
+        [names addObject:valueDatatypeObject];
+    }
+    if (dataType & RIXJSONDataTypeString) {
+        [names addObject:valueDatatypeString];
+    }
+    return names;
+}
+
 @class RIXJSONSchemaValidatorSchema;
 
 @interface RIXJSONSchemaValidator ()
@@ -152,6 +211,12 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
 - (RIXJSONDataType)JSONDataType
 {
     return RIXJSONDataTypeString;
+}
+- (NSString *)stringByAddingJSONPointerEscapes
+{
+    NSString *result = [self stringByReplacingOccurrencesOfString:@"~" withString:@"~0"];
+    result = [result stringByReplacingOccurrencesOfString:@"/" withString:@"~1"];
+    return result;
 }
 @end
 
@@ -270,7 +335,7 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
 }
 - (NSString *)JSONPointer
 {
-    NSString *fragment = self.fragment;
+    NSString *fragment = [self.fragment stringByRemovingPercentEncoding];
     if (fragment.length == 0) {
         return @"";
     }
@@ -384,7 +449,7 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
 
 @interface RIXJSONSchemaValidatorContext : NSObject
 @property (nonatomic, weak) RIXJSONSchemaValidator *validator;
-@property (nonatomic, strong) NSMutableArray *errors;
+@property (nonatomic, strong) NSMutableArray *errors; // NSArray[] of NSError[]
 @property (nonatomic, strong) NSMutableArray *schemaStack; // RIXJSONSchemaValidatorSchema[]
 @property (nonatomic, strong) NSMutableArray *currentJSONPath; // NSString or NSNumber
 @end
@@ -398,6 +463,9 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
         _schemaStack = [[NSMutableArray alloc] initWithObjects:schema, nil];
         _validator = validator;
         _currentJSONPath = [[NSMutableArray alloc] init];
+        _errors = [[NSMutableArray alloc] init];
+        NSMutableArray *topErrors = [[NSMutableArray alloc] init];
+        [_errors addObject:topErrors];
     }
     return self;
 }
@@ -413,14 +481,26 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
         va_end(args);
         userInfo[NSLocalizedDescriptionKey] = message;
     }
-    NSString *path = (_currentJSONPath.count > 0) ? [@"/" stringByAppendingString:[_currentJSONPath componentsJoinedByString:@"/"]] : @"";
+    NSString *path;
+    if (_currentJSONPath.count == 0) {
+        path = @"";
+    }
+    else {
+        path = @"";
+        for (id elem in _currentJSONPath) {
+            path = [NSString stringWithFormat:@"%@/%@", path, [[[elem description] stringByAddingJSONPointerEscapes] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+        }
+    }
     userInfo[RIXJSONSchemaValidatorErrorJSONPointerKey] = path;
     NSError *error = [NSError errorWithDomain:RIXJSONSchemaValidatorErrorDomain code:errorCode userInfo:userInfo];
-    if (!self.errors) {
-        self.errors = [[NSMutableArray alloc] init];
-    }
-    [self.errors addObject:error];
-    [self.errors objectAtIndexedSubscript:0];
+    NSMutableArray *errors = [_errors lastObject];
+    [errors addObject:error];
+    [errors objectAtIndexedSubscript:0];
+}
+
+- (NSArray *)currentErrors
+{
+    return [_errors lastObject];
 }
 
 - (id)objectForKeyedSubscript:(id)key
@@ -441,59 +521,45 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     if (!elem) {
         return RIXJSONDataTypeMaskAll;
     }
-    NSArray *types;
     if ([elem JSONDataType] == RIXJSONDataTypeString) {
-        types = @[ elem ];
+        return RIXJSONDataTypeFromString(elem);
     }
     else if ([elem JSONDataType] == RIXJSONDataTypeArray) {
-        types = elem;
+        return RIXJSONDataTypeFromStrings(elem);
     }
     else {
         return RIXJSONDataTypeMaskAll;
     }
-    NSUInteger typeMask = 0;
-    for (id v in types) {
-        if ([v isEqual:valueDatatypeArray]) {
-            typeMask |= RIXJSONDataTypeArray;
-        }
-        else if ([v isEqual:valueDatatypeBoolean]) {
-            typeMask |= RIXJSONDataTypeBoolean;
-        }
-        else if ([v isEqual:valueDatatypeInteger]) {
-            typeMask |= RIXJSONDataTypeInteger;
-        }
-        else if ([v isEqual:valueDatatypeNull]) {
-            typeMask |= RIXJSONDataTypeNull;
-        }
-        else if ([v isEqual:valueDatatypeNumber]) {
-            typeMask |= RIXJSONDataTypeNumber;
-        }
-        else if ([v isEqual:valueDatatypeObject]) {
-            typeMask |= RIXJSONDataTypeObject;
-        }
-        else if ([v isEqual:valueDatatypeString]) {
-            typeMask |= RIXJSONDataTypeString;
-        }
-    }
-    return typeMask;
 }
 
-- (void)pushSchema:(NSDictionary *)schema pathComponent:(id)pathComponent
+- (void)pushSchema:(NSDictionary *)schema
+documentPathComponent:(id)pathComponent
+ schemaPathSegment:(NSString *)schemaPathSegment;
 {
     if (!_schemaStack) {
         _schemaStack = [[NSMutableArray alloc] init];
     }
     RIXJSONSchemaValidatorSchema *topSchema = [_schemaStack lastObject];
-    NSURL *URI = [topSchema.URI URIRelativeToJSONReference:[NSString stringWithFormat:@"#%@", pathComponent]];
+    NSURL *URI = [topSchema.URI URIRelativeToJSONReference:[NSString stringWithFormat:@"#%@", schemaPathSegment]];
     RIXJSONSchemaValidatorSchema *schemaObj = [[RIXJSONSchemaValidatorSchema alloc] initWithSchema:schema URI:URI validator:_validator];
     [_schemaStack addObject:schemaObj];
-    [_currentJSONPath addObject:pathComponent];
+    [_currentJSONPath addObject:(pathComponent) ? pathComponent : @""];
 }
 
 - (void)pop
 {
     [_schemaStack removeLastObject];
     [_currentJSONPath removeLastObject];
+}
+
+- (void)pushErrors
+{
+    [_errors addObject:[[NSMutableArray alloc] init]];
+}
+
+- (void)popErrors
+{
+    [_errors removeLastObject];
 }
 
 @end
@@ -535,7 +601,7 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     RIXJSONSchemaValidatorContext *context = [[RIXJSONSchemaValidatorContext alloc] initWithInitialSchema:_rootSchema validator:self];
     [self validateJSONValue:value context:context];
     [context pop];
-    return context.errors;
+    return [context currentErrors];
 }
 
 - (void)validateJSONValue:(id)value
@@ -549,8 +615,9 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     NSUInteger allowedDataTypes = [context allowedDataTypes];
     NSUInteger commonDataTypes = possibleDataTypes & allowedDataTypes;
     if (commonDataTypes == 0) {
-#warning TODO: Add details to message
-        [context addErrorCode:RIXJSONSchemaValidatorErrorValueIncorrectType message:@"Value type does not match schema"];
+        NSArray *valueTypeStrings = NSStringsFromRIXJSONDataType(possibleDataTypes);
+        NSArray *allowedTypeStrings = NSStringsFromRIXJSONDataType(allowedDataTypes);
+        [context addErrorCode:RIXJSONSchemaValidatorErrorValueIncorrectType message:@"Value type(s) %@ do not match schema type(s) %@", [valueTypeStrings componentsJoinedByString:@", "], [allowedTypeStrings componentsJoinedByString:@", "]];
     }
     if (commonDataTypes & (RIXJSONDataTypeNull | RIXJSONDataTypeBoolean)) {
         // Type is correct. Nothing more to validate.
@@ -567,7 +634,64 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     else if (commonDataTypes & (RIXJSONDataTypeInteger | RIXJSONDataTypeNumber)) {
         [self validateJSONNumber:value context:context];
     }
+
+    id enumv = context[keyAnyEnum];
+    if ([enumv JSONDataType] == RIXJSONDataTypeArray) {
+        if (![enumv containsObject:value]) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueNotInEnum message:@"Value must be one of the values defined by the enum"];
+        }
+    }
+
+    id allOf = context[keyAnyAllOf];
+    if ([allOf JSONDataType] == RIXJSONDataTypeArray) {
+        if ([self numberOfValidatingSchemasForValue:value context:context schemas:allOf] != [allOf count]) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAllOf message:@"Value must validate against all schemas in allOf rule"];
+        }
+    }
+
+    id anyOf = context[keyAnyAnyOf];
+    if ([anyOf JSONDataType] == RIXJSONDataTypeArray) {
+        if ([self numberOfValidatingSchemasForValue:value context:context schemas:anyOf] == 0) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAnyOf message:@"Value must validate against at least one schema in anyOf rule"];
+        }
+    }
+
+    id oneOf = context[keyAnyOneOf];
+    if ([oneOf JSONDataType] == RIXJSONDataTypeArray) {
+        if ([self numberOfValidatingSchemasForValue:value context:context schemas:oneOf] != 1) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedOneOf message:@"Value must validate against exactly one schema in oneOf rule"];
+        }
+    }
+
+    id not = context[keyAnyNot];
+    if ([not JSONDataType] == RIXJSONDataTypeObject) {
+        if ([self numberOfValidatingSchemasForValue:value context:context schemas:@[ not ]] != 0) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedNot message:@"Value must not validate against schema in not rule"];
+        }
+    }
 }
+
+- (NSUInteger)numberOfValidatingSchemasForValue:(id)value
+                                        context:(RIXJSONSchemaValidatorContext *)context
+                                        schemas:(NSArray *)schemas
+{
+    __block NSUInteger count = 0;
+    [schemas enumerateObjectsUsingBlock:^(id schema, NSUInteger index, BOOL *stop) {
+        if ([schema JSONDataType] == RIXJSONDataTypeObject) {
+            [context pushErrors];
+            [context pushSchema:schema documentPathComponent:nil schemaPathSegment:[NSString stringWithFormat:@"%@/%li", keyAnyAllOf, index]];
+            [self validateJSONValue:value context:context];
+            NSArray *suberrors = [context currentErrors];
+            [context pop];
+            [context popErrors];
+            if (suberrors.count == 0) {
+                count++;
+            }
+        }
+    }];
+    return count;
+}
+
 
 - (void)validateJSONObject:(NSDictionary *)object
                    context:(RIXJSONSchemaValidatorContext *)context
@@ -600,17 +724,21 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     id additionalProperties = context[keyObjectAdditionalProperties];
     [object enumerateKeysAndObjectsUsingBlock:^(NSString *propertyName, id propertyValue, BOOL *stop) {
         __block BOOL schemaFound = NO;
-        NSDictionary *itemSchema = properties[propertyName];
-        if (itemSchema) {
-            [context pushSchema:itemSchema pathComponent:propertyName];
+        NSDictionary *propertySchema = properties[propertyName];
+        if (propertySchema) {
+            [context pushSchema:propertySchema
+          documentPathComponent:propertyName
+              schemaPathSegment:[NSString stringWithFormat:@"%@/%@", keyObjectProperties, [[propertyName stringByAddingJSONPointerEscapes] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]]];
             [self validateJSONValue:propertyValue context:context];
             [context pop];
             schemaFound = YES;
         }
         else {
-            [patternProperties enumerateKeysAndObjectsUsingBlock:^(NSString *pattern, NSDictionary *itemSchema, BOOL *stop) {
+            [patternProperties enumerateKeysAndObjectsUsingBlock:^(NSString *pattern, NSDictionary *propertySchema, BOOL *stop) {
                 if ([self doesString:propertyName matchPattern:pattern]) {
-                    [context pushSchema:itemSchema pathComponent:propertyName];
+                    [context pushSchema:propertySchema
+                  documentPathComponent:propertyName
+                      schemaPathSegment:[NSString stringWithFormat:@"%@/%@", keyObjectPatternProperties, [[pattern stringByAddingJSONPointerEscapes] stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]]];
                     [self validateJSONValue:propertyValue context:context];
                     [context pop];
                     schemaFound = YES;
@@ -624,7 +752,7 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
         }
         if (!schemaFound) {
             if (additionalProperties) {
-                if ([additionalProperties isKindOfClass:[NSNumber class]]) {
+                if ([additionalProperties JSONDataType] & RIXJSONDataTypeBoolean) {
                     if ([additionalProperties boolValue]) {
                         // Additional properties are allowed but hae no schema
                     }
@@ -635,7 +763,7 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
                 }
                 else if ([additionalProperties isKindOfClass:[NSDictionary class]]) {
                     NSDictionary *itemSchema = additionalProperties;
-                    [context pushSchema:itemSchema pathComponent:propertyName];
+                    [context pushSchema:itemSchema documentPathComponent:propertyName schemaPathSegment:keyObjectAdditionalProperties];
                     [self validateJSONValue:propertyValue context:context];
                     [context pop];
                 }
@@ -678,18 +806,18 @@ typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     NSDictionary *additionalItemSchema = ([additionalItems isKindOfClass:[NSDictionary class]]) ? additionalItems : nil;
     [array enumerateObjectsUsingBlock:^(id element, NSUInteger index, BOOL *stop) {
         if (singleItemSchema) {
-            [context pushSchema:singleItemSchema pathComponent:@(index)];
+            [context pushSchema:singleItemSchema documentPathComponent:@(index) schemaPathSegment:keyArrayItems];
             [self validateJSONValue:element context:context];
             [context pop];
         }
         else if (multipleItemSchemas && index < multipleItemSchemas.count) {
-            [context pushSchema:multipleItemSchemas[index] pathComponent:@(index)];
+            [context pushSchema:multipleItemSchemas[index] documentPathComponent:@(index) schemaPathSegment:[NSString stringWithFormat:@"%@/%lu", keyArrayItems, index]];
             [self validateJSONValue:element context:context];
             [context pop];
         }
         else if (allowAdditionalItems) {
             if (additionalItemSchema) {
-                [context pushSchema:additionalItemSchema pathComponent:@(index)];
+                [context pushSchema:additionalItemSchema documentPathComponent:@(index) schemaPathSegment:keyArrayAdditionalItems];
                 [self validateJSONValue:element context:context];
                 [context pop];
             }
