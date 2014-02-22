@@ -54,9 +54,24 @@
     [super tearDown];
 }
 
+- (BOOL)validateSchema:(NSDictionary *)schema
+{
+    NSDictionary *JSONSchema = [self loadJSONWithName:@"json-schema-draft-04"];
+    RIXJSONSchemaValidator *schemaValidator = [[RIXJSONSchemaValidator alloc] initWithSchema:JSONSchema];
+    NSArray *errors = [schemaValidator validateJSONValue:schema];
+    if (errors) {
+        NSLog(@"Invalid schema:\n%@", errors);
+    }
+    return (errors.count == 0);
+}
+
 - (void)testSimpleSchema
 {
     NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-00"];
+    if (![self validateSchema:schemaDict]) {
+        XCTFail(@"Invalid schema");
+        return;
+    }
     id doc = [self loadJSONWithName:@"test-doc-00"];
     RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
     NSArray *errors = [validator validateJSONValue:doc];
@@ -66,6 +81,10 @@
 - (void)testAllValidationRules
 {
     NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-01"];
+    if (![self validateSchema:schemaDict]) {
+        XCTFail(@"Invalid schema");
+        return;
+    }
     id doc = [self loadJSONWithName:@"test-doc-02"];
     RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
     [validator setFormatValidator:[[RIXJSONSchemaValidatorTestCustomFormat alloc] init] forFormatName:@"custom"];
@@ -187,6 +206,10 @@
 {
     // Schema references another schema in the bundle
     NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-03"];
+    if (![self validateSchema:schemaDict]) {
+        XCTFail(@"Invalid schema");
+        return;
+    }
     id doc = [self loadJSONWithName:@"test-doc-03"];
     RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
     [validator setFormatValidator:[[RIXJSONSchemaValidatorTestCustomFormat alloc] init] forFormatName:@"custom"];
