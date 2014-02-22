@@ -1,0 +1,6 @@
+{
+    "legalValue00": "abc123",
+    "legalValue01": "xyz987",
+    "illegalValue00": "123abc",
+    "illegalValue01": 3.14
+}

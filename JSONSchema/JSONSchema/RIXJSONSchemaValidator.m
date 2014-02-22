@@ -674,6 +674,61 @@ documentPathComponent:(id)pathComponent
 
 @end
 
+@implementation RIXJSONSchemaBundleURIResolver
+
+- (instancetype)init
+{
+    return [super init];
+}
+
+- (instancetype)initWithBundle:(NSBundle *)bundle
+{
+    self = [super init];
+    if (self) {
+        _bundle = bundle;
+    }
+    return self;
+}
+
+- (NSDictionary *)schemaForURI:(NSURL *)URI
+{
+    if (![URI.scheme isEqual:@"bundle"]) {
+        return nil;
+    }
+    NSBundle *bundle;
+    if (URI.host) {
+        bundle = [NSBundle bundleWithIdentifier:URI.host];
+    }
+    else if (_bundle) {
+        bundle = _bundle;
+    }
+    else {
+        bundle = [NSBundle mainBundle];
+    }
+    if (!bundle) {
+        // No bundle
+        return nil;
+    }
+    NSString *path = [bundle pathForResource:URI.path ofType:nil];
+    if (!path) {
+        // No such file in bundle
+        return nil;
+    }
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    if (!data) {
+        // Couldn't load file
+        return nil;
+    }
+    id obj = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    if (![obj isKindOfClass:[NSDictionary class]]) {
+        // Didn't parse or didn't have an object as its root element
+        return nil;
+    }
+    return obj;
+}
+
+@end
+
 @implementation RIXJSONSchemaValidator
 
 - (instancetype)init
@@ -711,6 +766,7 @@ documentPathComponent:(id)pathComponent
         }
         _rootSchema = [[RIXJSONSchemaValidatorSchema alloc] initWithSchema:schemaDictCopy URI:URI validator:self];
         _URIToSchema[URI] = _rootSchema;
+        _URIResolvers = [[NSMutableArray alloc] initWithObjects:[[RIXJSONSchemaBundleURIResolver alloc] init], nil];
     }
     return self;
 }
@@ -726,6 +782,15 @@ documentPathComponent:(id)pathComponent
         _customFormatValidators = [[NSMutableDictionary alloc] init];
     }
     [_customFormatValidators setValue:formatValidator forKey:formatName];
+}
+
+// public
+- (void)addURIResolver:(id<RIXJSONSchemaValidatorURIResolver>)URIResolver
+{
+    if (!URIResolver) {
+        return;
+    }
+    [_URIResolvers addObject:URIResolver];
 }
 
 // public

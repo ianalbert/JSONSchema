@@ -1,0 +1,11 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$id": "bundle:///test-schema-03.json",
+
+    "definitions": {
+        "referencedSchema": {
+            "type": "string",
+            "pattern": "^[a-z]{3}[0-9]{3}$"
+        }
+    }
+}

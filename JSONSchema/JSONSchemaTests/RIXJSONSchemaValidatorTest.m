@@ -54,8 +54,7 @@
     [super tearDown];
 }
 
-// Simple schema
-- (void)test00
+- (void)testSimpleSchema
 {
     NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-00"];
     id doc = [self loadJSONWithName:@"test-doc-00"];
@@ -64,8 +63,7 @@
     XCTAssertTrue(errors.count == 0, @"Found unexpected errors %@", errors);
 }
 
-// Validation failures
-- (void)test02
+- (void)testAllValidationRules
 {
     NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-01"];
     id doc = [self loadJSONWithName:@"test-doc-02"];
@@ -185,9 +183,32 @@
     XCTAssertEqualObjects(@[], errors, @"");
 }
 
+- (void)testExternalReferences
+{
+    // Schema references another schema in the bundle
+    NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-03"];
+    id doc = [self loadJSONWithName:@"test-doc-03"];
+    RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
+    [validator setFormatValidator:[[RIXJSONSchemaValidatorTestCustomFormat alloc] init] forFormatName:@"custom"];
+    // Unit tests don't have a main bundle, so set one explicitly
+    RIXJSONSchemaBundleURIResolver *URIResolver = [[RIXJSONSchemaBundleURIResolver alloc] initWithBundle:[self mainBundle]];
+    [validator addURIResolver:URIResolver];
+    NSMutableArray *errors = [[validator validateJSONValue:doc] mutableCopy];
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/illegalValue00");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/illegalValue01");
+
+    XCTAssertEqualObjects(@[], errors, @"");
+}
+
+- (NSBundle *)mainBundle
+{
+    return [NSBundle bundleWithIdentifier:@"com.rixafrix.JSONSchemaTests"];
+}
+
 - (id)loadJSONWithName:(NSString *)name
 {
-    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.rixafrix.JSONSchemaTests"];
+    NSBundle *bundle = [self mainBundle];
     XCTAssertNotNil(bundle, @"Could not create bundle");
     NSString *path = [bundle pathForResource:name ofType:@"json"];
     XCTAssertNotNil(path, @"Could not resolve path for %@.json", name);
