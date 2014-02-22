@@ -1,16 +1,30 @@
 JSONSchema
 ==========
 
-A JSON Schema validator in Obj-C.
+A [http://json-schema.org](JSON Schema) validator in Obj-C. This implementation is based off Internet Draft 4 of the specification.
 
-**As of 2014-02-16, this library is still in early development.**
+# Introduction
 
-JSON Schema is a way of specifying the expected structure of a JSON document by way of a rule set. A JSON Schema validator can apply these rules against a JSON document to ensure it complies or report errors for any violations it finds.
+JSON Schema is a way of specifying the expected structure of a JSON document by way of a rule set. A JSON Schema validator can apply these rules against a JSON document to ensure it complies or report errors for any violations it finds. While similar in function to an XML schema, JSON Schema is more legible, less verbose, and permissive-by-default.
 
-One use would be in client unit tests to fetch responses from a server and ensure they conform to the format the client expects. This can help systematically identify problems, subtle or otherwise, that might cause problems in the app.
+# Installation
 
-Another use is to use the validator in production on every response coming back from the server. This approach serves as a safety mechanism, ensuring that an errant or unexpected response does not cause a client crash. For example, if the client expects a certain JSON property to be a string but the server returns a number, array, or object, an unvalidated response could cause a crash when string methods are attempted on the value. By validating the response and rejecting invalid responses the client can gracefully skip the response and show an error screen to the user. It could additionally "phone home" details of the schema validation so that server developers can quickly address the problem.
+This library is designed to be extremely lightweight. All you need to do to use it in your project is copy RIXJSONSchemaValidator.h and RIXJSONSchemaValidator.m into your project. It only requires the Foundation framework. The code uses ARC. If your project uses MRC then you will need to add the "-fobjc-arc" flag to RIXJSONSchemaValidator.m in the Build Phases tab of your project.
 
-JSON Schemas you write for server responses should live in the client codebase. It is generally not a good idea to have the server send down these schemas at runtime. You can think of the schema as a contract for what the client code expects and can process. It is descriptive, not prescriptive. Changing the schema does not change the Obj-C code of your client. Therefore the schemas should be baked in the same as any client source code file. They should be checked into the client code repository and branched, versioned, and tagged along with the other code.
+# Role
 
-Conversely, to validate a client JSON request the server can opt to use a JSON Schema validator to ensure the request matches what its code can handle. However, server software generally doesn't run Obj-C, so this library isn't useful for that task. See http://json-schema.org/implementations.html for a list of JSON Schema validators for other programming languages.
+A schema is a contract that a document adheres to a specified format. As such, its most useful role is one of "keeping the other guy honest," which means using it against incoming data. For an iOS app or Mac application this means verifying what you're getting from a server is in the agreed-upon format.
+
+Schemas should live with the code they protect. If a schema is intended to guard client code against responses coming from a server then they should live with that client code. When the schema changes the client code should change, and vice versa.
+
+# Uses
+
+One potential use is to incorporate schema validation in a unit test. The test can check responses from the server and ensure they conform to what the client expects. Schemas are checked into the project along with the rest of the client source code. It can be tricky to set up unit tests that fetch network responses asynchronously though.
+
+Another use is to put the schema validator in the app or application code and use it to verify every response before handing it up to higher level logic. If a response does not validate then it is thrown out as invalid and treated as a server error. Because responses are always validated, code downstream can do less boilerplate defensive coding, such as type checking and bounds checking.
+
+A modification to that strategy is to only use validation in development builds. This way problems can still be found during development but there will be no performance hit in the production app.
+
+# Coding Goals
+
+This project was written to be as lightweight as possible. It's contained in a single .h and single .m file for easy installation. It does not pull in lots of extra frameworks, and it requires no third-party libraries. Coding is as by-the-book as possible -- potentially at the cost of performance -- to reduce the chance of future evolutions of Obj-C breaking something in this code. There should be few if any "clever" hacks in place.
