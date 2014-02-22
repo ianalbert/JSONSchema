@@ -28,6 +28,7 @@
 		02CDC5A218B8FC5300C7C4C9 /* test-schema-03.json in Resources */ = {isa = PBXBuildFile; fileRef = 02CDC5A118B8FC5300C7C4C9 /* test-schema-03.json */; };
 		02CDC5A418B8FCDD00C7C4C9 /* test-schema-04.json in Resources */ = {isa = PBXBuildFile; fileRef = 02CDC5A318B8FCDD00C7C4C9 /* test-schema-04.json */; };
 		02CDC5A618B8FD6900C7C4C9 /* test-doc-03.json in Resources */ = {isa = PBXBuildFile; fileRef = 02CDC5A518B8FD6900C7C4C9 /* test-doc-03.json */; };
+		02CDC5A818B90E8100C7C4C9 /* test-schema-05.json in Resources */ = {isa = PBXBuildFile; fileRef = 02CDC5A718B90E8100C7C4C9 /* test-schema-05.json */; };
 		02F9748C18920387000C86A2 /* RIXArchitectureTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 02F9748B18920387000C86A2 /* RIXArchitectureTest.m */; };
 		02F9748D189207D6000C86A2 /* RIXJSONSchemaValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = 02CD98791891F8EB00269B62 /* RIXJSONSchemaValidator.m */; };
 		02F9748F18935AC0000C86A2 /* json-schema-draft-04.json in Resources */ = {isa = PBXBuildFile; fileRef = 02F9748E18935AC0000C86A2 /* json-schema-draft-04.json */; };
@@ -69,6 +70,7 @@
 		02CDC5A118B8FC5300C7C4C9 /* test-schema-03.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-schema-03.json"; sourceTree = "<group>"; };
 		02CDC5A318B8FCDD00C7C4C9 /* test-schema-04.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-schema-04.json"; sourceTree = "<group>"; };
 		02CDC5A518B8FD6900C7C4C9 /* test-doc-03.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-doc-03.json"; sourceTree = "<group>"; };
+		02CDC5A718B90E8100C7C4C9 /* test-schema-05.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-schema-05.json"; sourceTree = "<group>"; };
 		02F9748B18920387000C86A2 /* RIXArchitectureTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RIXArchitectureTest.m; sourceTree = "<group>"; };
 		02F9748E18935AC0000C86A2 /* json-schema-draft-04.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "json-schema-draft-04.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -107,6 +109,7 @@
 				02CDC5A118B8FC5300C7C4C9 /* test-schema-03.json */,
 				02CDC5A318B8FCDD00C7C4C9 /* test-schema-04.json */,
 				02CDC5A518B8FD6900C7C4C9 /* test-doc-03.json */,
+				02CDC5A718B90E8100C7C4C9 /* test-schema-05.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -285,6 +288,7 @@
 				028B9E0218B172F80032E8F2 /* json-schema-draft-04.json in Resources */,
 				02CDC5A418B8FCDD00C7C4C9 /* test-schema-04.json in Resources */,
 				028E218E1890BA7A008976E4 /* InfoPlist.strings in Resources */,
+				02CDC5A818B90E8100C7C4C9 /* test-schema-05.json in Resources */,
 				028B9E0818B2C3040032E8F2 /* test-schema-01.json in Resources */,
 				02CDC5A218B8FC5300C7C4C9 /* test-schema-03.json in Resources */,
 				028B9E0418B1732D0032E8F2 /* test-schema-00.json in Resources */,

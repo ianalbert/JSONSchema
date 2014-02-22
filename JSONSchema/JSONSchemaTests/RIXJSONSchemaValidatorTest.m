@@ -224,6 +224,12 @@
     XCTAssertEqualObjects(@[], errors, @"");
 }
 
+- (void)testSchemaValidation
+{
+    NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-05"];
+    XCTAssertFalse([self validateSchema:schemaDict], @"Invalid schema validated properly");
+}
+
 - (NSBundle *)mainBundle
 {
     return [NSBundle bundleWithIdentifier:@"com.rixafrix.JSONSchemaTests"];
