@@ -1,7 +1,7 @@
 JSONSchema
 ==========
 
-A [http://json-schema.org](JSON Schema) validator in Obj-C. This implementation is based off Internet Draft 4 of the specification.
+A [JSON Schema](http://json-schema.org) validator in Obj-C. This implementation is based off Internet Draft 4 of the specification.
 
 # Introduction
 
