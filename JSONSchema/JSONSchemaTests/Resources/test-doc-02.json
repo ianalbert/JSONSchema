@@ -1,30 +1,46 @@
 {
-    "i00": "wrong datatype",
-    "i01": 1,
-    "i02": -3,
-    "i03": 102,
-    "i04": 0,
-    "i05": 0.123,
+    "integer-100": 3,
+    "integer-101": 6,
+    "integer-102": 99,
+    "integer-200": "wrong datatype",
+    "integer-201": 1,
+    "integer-202": -3,
+    "integer-203": 102,
+    "integer-204": 0,
+    "integer-205": 0.123,
 
-    "n00": "wrong datatype",
-    "n01": 0.125,
-    "n02": -0.25,
-    "n03": 100.25,
+    "number-100": 0.00,
+    "number-101": 37.25,
+    "number-102": 100.0,
+    "number-200": "wrong datatype",
+    "number-201": 0.125,
+    "number-202": -0.25,
+    "number-203": 100.25,
 
-    "b00": "wrong datatype",
-    "b01": 2,
-    "b02": 1,
-    "b03": 0,
+    "boolean-100": true,
+    "boolean-101": false,
+    "boolean-200": "wrong datatype",
+    "boolean-201": 2,
+    "boolean-202": 1,
+    "boolean-203": 0,
 
-    "s00": 123,
-    "s01": "",
-    "s02": "12345678901234567890",
-    "s03": "123xyz",
-    "s04": "abc1234",
-    "s05": "abcd123",
+    "string-100": "gar286",
+    "string-101": "omw819",
+    "string-200": 123,
+    "string-201": "",
+    "string-202": "12345678901234567890",
+    "string-203": "123xyz",
+    "string-204": "abc1234",
+    "string-205": "abcd123",
 
-    "a00": [],
-    "a01": [
+    "array-100": [
+        "any string",
+        123,
+        false,
+        true
+    ],
+    "array-200": [],
+    "array-201": [
         "too many items",
         123.456,
         true,
@@ -36,19 +52,23 @@
         false,
         false
     ],
-    "a02": [
+    "array-202": [
         123,
         "wrong types",
         []
     ],
-    "a03": [
+    "array-203": [
         "same",
         "same",
         "same"
     ],
 
-    "o00": {},
-    "o01": {
+    "object-100": {
+        "foo": "bar",
+        "baz": 0
+    },
+    "object-200": {},
+    "object-201": {
         "a": 0,
         "b": 1,
         "c": 2,
@@ -62,47 +82,131 @@
         "k": 10
     },
 
-    "es00": "foxtrot",
-    "es01": 123,
-    "ei00": 55,
-    "ei01": "string",
+    "enum-string-100": "alpha",
+    "enum-string-101": "charlie",
+    "enum-string-200": "foxtrot",
+    "enum-string-201": 123,
 
-    "any00": 1,
-    "any01": "string",
+    "enum-integer-100": 1,
+    "enum-integer-101": 8,
+    "enum-integer-102": 13,
+    "enum-integer-200": 55,
+    "enum-integer-201": "string",
 
-    "all00": 3,
-    "all01": 108,
-    "all02": 1,
-    "all03": "string",
+    "anyOf-100": 27,
+    "anyOf-101": 999,
+    "anyOf-102": 3,
+    "anyOf-200": 1,
+    "anyOf-201": "string",
 
-    "one00": 1,
-    "one01": 27,
+    "allOf-100": 27,
+    "allOf-101": 9,
+    "allOf-102": 99,
+    "allOf-200": 3,
+    "allOf-201": 108,
+    "allOf-202": 1,
+    "allOf-203": "string",
 
-    "not00": 9,
+    "oneOf-100": 6,
+    "oneOf-101": 108,
+    "oneOf-200": 1,
+    "oneOf-201": 27,
 
-    "ad00": {
+    "not-100": 43,
+    "not-101": 1,
+    "not-200": 9,
+
+    "array-dependencies-100": {
+        "alpha": true,
+        "bravo": true,
+        "charlie": true
+    },
+    "array-dependencies-200": {
         "alpha": true,
         "bravo": []
     },
-    "ad01": {
+    "array-dependencies-201": {
         "alpha": true,
         "charlie": false
     },
-    "ad02": {
+    "array-dependencies-202": {
         "alpha": true
     },
 
-    "sd00": {
+    "schema-dependencies-100": {
+        "alpha": true,
+        "bravo": 25,
+        "charlie": "ABC"
+    },
+    "schema-dependencies-200": {
         "alpha": true
     },
-    "sd01": {
+    "schema-dependencies-201": {
         "alpha": true,
         "bravo": "wrong type",
         "charlie": "AAA"
     },
-    "sd02": {
+    "schema-dependencies-202": {
         "alpha": true,
         "bravo": 10,
         "charlie": "pattern mismatch"
-    }
+    },
+
+    "format-date-time-100": "2014-02-22T09:05:42Z-05:00",
+    "format-date-time-200": "9999-99-99T99:99:99Z+00:00",
+    "format-date-time-201": "May 4, 2014",
+    "format-date-time-202": 123,
+
+    "format-email-100": "username@domain.com",
+    "format-email-101": "username+routing@gmail.com",
+    "format-email-102": "dotted.username@hyphen-domain.com",
+    "format-email-200": "spaces illegal@somewhere.com",
+    "format-email-201": "no.at.sign.com",
+    "format-email-202": "@no.username.com",
+    "format-email-203": "no.host@",
+    "format-email-204": "multiple@at@signs.com",
+    "format-email-205": "illegal@host+name!.com",
+    "format-email-206": 123,
+
+    "format-hostname-100": "server",
+    "format-hostname-101": "fqdn.host-name.com",
+    "format-hostname-200": "no spaces",
+    "format-hostname-201": "other_illegals$",
+    "format-hostname-202": 123,
+
+    "format-ipv4-100": "192.168.0.1",
+    "format-ipv4-101": "0.0.0.0",
+    "format-ipv4-102": "255.255.255.255",
+    "format-ipv4-200": "1",
+    "format-ipv4-201": "1.1",
+    "format-ipv4-202": "1.1.1",
+    "format-ipv4-203": "1.1.1.1.1",
+    "format-ipv4-204": "1.a.b.c",
+    "format-ipv4-205": "256.256.256.256",
+    "format-ipv4-206": 123,
+
+    "format-ipv6-100": "20bf:482a:fbac:029c:1011:ff81:bad9:8008",
+    "format-ipv6-101": "1:2:3:4:5:6:7:8",
+    "format-ipv6-102": "1::2",
+    "format-ipv6-103": "::",
+    "format-ipv6-104": "::ffff:192.0.2.128",
+    "format-ipv6-200": "12345:12345:12345:12345:12345:12345:12345:12345",
+    "format-ipv6-201": "not:hex:ide:cim:alc:har:act:ers",
+    "format-ipv6-202": "1111:2222:3333:4444:5555:6666:7777:8888:9999",
+    "format-ipv6-203": 123,
+
+    "format-uri-100": "http://www.server.com/filename.ext",
+    "format-uri-101": "http://user:password@www.server.com:1234/path/filename.ext?query=value#fragment",
+    "format-uri-102": "www.noscheme.com/path",
+    "format-uri-103": "relative/path",
+    "format-uri-104": "urn:isbn:0-395-36341-1",
+    "format-uri-105": "mailto:username@server.com",
+    "format-uri-106": "",
+    "format-uri-200": "illegal character",
+    "format-uri-201": 123,
+
+    "format-custom-100": "legal",
+    "format-custom-200": "illegal",
+
+    "extraneous-value": "Additional properties forbidden"
 }

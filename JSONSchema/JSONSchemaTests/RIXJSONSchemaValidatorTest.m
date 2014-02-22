@@ -25,6 +25,17 @@
     }\
 }
 
+@interface RIXJSONSchemaValidatorTestCustomFormat : NSObject <RIXJSONSchemaFormatValidator>
+@end
+@implementation RIXJSONSchemaValidatorTestCustomFormat
+
+- (BOOL)isValidValue:(id)value forFormatName:(NSString *)formatName
+{
+    return ([value isEqual:@"legal"]);
+}
+
+@end
+
 @interface RIXJSONSchemaValidatorTest : XCTestCase
 
 @end
@@ -53,93 +64,122 @@
     XCTAssertTrue(errors.count == 0, @"Found unexpected errors %@", errors);
 }
 
-// Validation success
-- (void)test01
-{
-    NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-01"];
-    id doc = [self loadJSONWithName:@"test-doc-01"];
-    RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
-    NSArray *errors = [validator validateJSONValue:doc];
-    XCTAssertTrue(errors.count == 0, @"Found unexpected errors %@", errors);
-}
-
 // Validation failures
 - (void)test02
 {
     NSDictionary *schemaDict = [self loadJSONWithName:@"test-schema-01"];
     id doc = [self loadJSONWithName:@"test-doc-02"];
     RIXJSONSchemaValidator *validator = [[RIXJSONSchemaValidator alloc] initWithSchema:schemaDict];
+    [validator setFormatValidator:[[RIXJSONSchemaValidatorTestCustomFormat alloc] init] forFormatName:@"custom"];
     NSMutableArray *errors = [[validator validateJSONValue:doc] mutableCopy];
 
+    // Account for every error we received. By convention, the test document
+    // numbers positive case keys with 1xx suffixes and negative cases with 2xx.
+
     RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectMissingRequiredProperty, @"");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectInvalidProperty, @"");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/i00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberNotAMultiple, @"/i01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberBelowMinimum, @"/i02");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberAboveMaximum, @"/i03");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberBelowMinimum, @"/i04");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/i05");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/integer-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberNotAMultiple, @"/integer-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberBelowMinimum, @"/integer-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberAboveMaximum, @"/integer-203");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberBelowMinimum, @"/integer-204");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/integer-205");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/n00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberNotAMultiple, @"/n01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberBelowMinimum, @"/n02");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberAboveMaximum, @"/n03");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/number-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberNotAMultiple, @"/number-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberBelowMinimum, @"/number-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorNumberAboveMaximum, @"/number-203");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/b00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/b01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/b02");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/b03");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/boolean-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/boolean-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/boolean-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/boolean-203");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/s00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringShorterThanMinimumLength, @"/s01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/s01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringLongerThanMaximumLength, @"/s02");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/s02");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/s03");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/s04");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/s05");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/string-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringShorterThanMinimumLength, @"/string-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/string-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringLongerThanMaximumLength, @"/string-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/string-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/string-203");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/string-204");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/string-205");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayTooFewElements, @"/a00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayTooManyElements, @"/a01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayElementsNotUnique, @"/a01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/a02/0");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/a02/1");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/a02/2");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayElementsNotUnique, @"/a03");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/a03/1");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/a03/2");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayTooFewElements, @"/array-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayTooManyElements, @"/array-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayElementsNotUnique, @"/array-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/array-202/0");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/array-202/1");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/array-202/2");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorArrayElementsNotUnique, @"/array-203");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/array-203/1");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/array-203/2");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectTooFewProperties, @"/o00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectTooManyProperties, @"/o01");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectTooFewProperties, @"/object-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectTooManyProperties, @"/object-201");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/es00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/es01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/es01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/ei00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/ei01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/ei01");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/enum-string-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/enum-string-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/enum-string-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/enum-integer-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueNotInEnum, @"/enum-integer-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/enum-integer-201");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAnyOf, @"/any00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAnyOf, @"/any01");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAnyOf, @"/anyOf-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAnyOf, @"/anyOf-201");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/all00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/all01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/all02");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/all03");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/allOf-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/allOf-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/allOf-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedAllOf, @"/allOf-203");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedOneOf, @"/one00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedOneOf, @"/one01");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedOneOf, @"/oneOf-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedOneOf, @"/oneOf-201");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedNot, @"/not00");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueFailedNot, @"/not-200");
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad02");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/ad02"); // two missing properties
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/array-dependencies-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/array-dependencies-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/array-dependencies-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/array-dependencies-202"); // two missing properties
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/sd00");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/sd01");
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/sd02");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/schema-dependencies-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/schema-dependencies-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorObjectFailedDependency, @"/schema-dependencies-202");
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-date-time-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-date-time-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-date-time-202");
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-email-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-email-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-email-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-email-203");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-email-204");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-email-205");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-email-206");
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-hostname-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-hostname-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-hostname-202");
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv4-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv4-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv4-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv4-203");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv4-204");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv4-205");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv4-206");
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv6-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv6-201");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv6-202");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-ipv6-203");
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-uri-200");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-uri-201");
+
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectFormat, @"/format-custom-200");
 
     // We should have accounted for every error already.
     XCTAssertEqualObjects(@[], errors, @"");

@@ -8,6 +8,8 @@
 
 #import "RIXJSONSchemaValidator.h"
 
+#import <arpa/inet.h>
+
 NSString *const RIXJSONSchemaValidatorErrorDomain = @"RIXJSONSchemaValidatorError";
 NSString *const RIXJSONSchemaValidatorErrorJSONPointerKey = @"JSONPointer";
 
@@ -148,6 +150,8 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 @property (nonatomic, strong) NSMutableDictionary *patternToRegex; // NSString -> NSRegularExpression
 @property (nonatomic, strong) NSMutableDictionary *URIToSchema; // NSURL -> RIXJSONSchemaValidatorSchema
 @property (nonatomic, strong) NSMutableArray *URIResolvers; // id<RIXJSONSchemaValidatorURIResolver>[]
+@property (nonatomic, strong) NSDictionary *defaultFormatValidators; // NSString format name -> id<RIXJSONSchemaFormatValidator>
+@property (nonatomic, strong) NSMutableDictionary *customFormatValidators; // NSString format name -> id<RIXJSONSchemaFormatValidator>
 
 - (RIXJSONSchemaValidatorSchema *)schemaForURI:(NSURL *)URI;
 
@@ -564,6 +568,112 @@ documentPathComponent:(id)pathComponent
 
 @end
 
+@interface RIXJSONSchemaDefaultFormatValidator : NSObject <RIXJSONSchemaFormatValidator>
+@end
+@implementation RIXJSONSchemaDefaultFormatValidator
+
+- (BOOL)isValidValue:(id)value forFormatName:(NSString *)formatName
+{
+    if ([formatName isEqual:@"date-time"]) {
+        return [value isKindOfClass:[NSString class]] && [self isValidDateTime:value];
+    }
+    else if ([formatName isEqual:@"email"]) {
+        return [value isKindOfClass:[NSString class]] && [self isValidEmail:value];
+    }
+    else if ([formatName isEqual:@"hostname"]) {
+        return [value isKindOfClass:[NSString class]] && [self isValidHostname:value];
+    }
+    else if ([formatName isEqual:@"ipv4"]) {
+        return [value isKindOfClass:[NSString class]] && [self isValidIPv4:value];
+    }
+    else if ([formatName isEqual:@"ipv6"]) {
+        return [value isKindOfClass:[NSString class]] && [self isValidIPv6:value];
+    }
+    else if ([formatName isEqual:@"uri"]) {
+        return [value isKindOfClass:[NSString class]] && [self isValidURI:value];
+    }
+    return YES;
+}
+
+- (BOOL)isValidDateTime:(NSString *)value
+{
+    static NSDateFormatter *formatter;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        formatter = [[NSDateFormatter alloc] init];
+        // http://tools.ietf.org/html/rfc3339#section-5.6
+        formatter.dateFormat = @"yyyy-MM-dd'T'HH:mm:ss'Z'ZZZZZ";
+        formatter.calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
+        formatter.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+    });
+    // FIXME: Support fractional seconds
+    NSDate *date = [formatter dateFromString:value];
+    return (date != nil);
+}
+
+- (BOOL)isValidEmail:(NSString *)value
+{
+    static NSRegularExpression *emailRegex;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // A fairly safe regex which doesn't try to get too clever.
+        // http://www.regular-expressions.info/email.html
+        NSString *pattern = @"^[a-z0-9!#$%&'*+/=?^_`{|}~-]+"
+                "(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*"
+                "@"
+                "(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+"
+                "[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$";
+        emailRegex = [NSRegularExpression regularExpressionWithPattern:pattern options:NSRegularExpressionCaseInsensitive error:nil];
+    });
+    NSUInteger matches = [emailRegex numberOfMatchesInString:value options:0 range:NSMakeRange(0, value.length)];
+    return (matches > 0);
+}
+
+- (BOOL)isValidHostname:(NSString *)value
+{
+    static NSRegularExpression *hostnameRegex;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        // http://stackoverflow.com/questions/1418423/the-hostname-regex
+        NSString *pattern = @"^"
+                "(?=.{1,255}$)"
+                "[0-9A-Za-z]"
+                "(?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?"
+                "(?:\\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*"
+                "\\.?"
+                "$";
+        hostnameRegex = [NSRegularExpression regularExpressionWithPattern:pattern options:NSRegularExpressionCaseInsensitive error:nil];
+    });
+    NSUInteger matches = [hostnameRegex numberOfMatchesInString:value options:0 range:NSMakeRange(0, value.length)];
+    return (matches > 0);
+}
+
+- (BOOL)isValidIPv4:(NSString *)value
+{
+    // http://stackoverflow.com/questions/1679152/how-to-validate-an-ip-address-with-regular-expression-in-objective-c/10971521#10971521
+    const char *utf8 = [value UTF8String];
+    struct in_addr dst;
+    int success = inet_pton(AF_INET, utf8, &dst);
+    return (success != 0);
+}
+
+- (BOOL)isValidIPv6:(NSString *)value
+{
+    const char *utf8 = [value UTF8String];
+    struct in6_addr dst6;
+    int success = inet_pton(AF_INET6, utf8, &dst6);
+    return (success != 0);
+}
+
+- (BOOL)isValidURI:(NSString *)value
+{
+    // XXX: NSURL handles many URIs but not all. This is the most convenient test.
+    NSURL *URL = [NSURL URLWithString:value];
+    return (URL != nil);
+}
+
+@end
+
 @implementation RIXJSONSchemaValidator
 
 - (instancetype)init
@@ -579,6 +689,16 @@ documentPathComponent:(id)pathComponent
         if (!schema) {
             return nil;
         }
+        _formatValidationEnabled = YES;
+        RIXJSONSchemaDefaultFormatValidator *validator = [[RIXJSONSchemaDefaultFormatValidator alloc] init];
+        _defaultFormatValidators = @{
+            @"date-time": validator,
+            @"email": validator,
+            @"hostname": validator,
+            @"ipv4": validator,
+            @"ipv6": validator,
+            @"uri": validator,
+        };
         NSDictionary *schemaDictCopy = [schema copy];
         _URIToSchema = [[NSMutableDictionary alloc] init];
         NSString *ident = schema[keyMainID];
@@ -593,6 +713,19 @@ documentPathComponent:(id)pathComponent
         _URIToSchema[URI] = _rootSchema;
     }
     return self;
+}
+
+// public
+- (void)setFormatValidator:(id<RIXJSONSchemaFormatValidator>)formatValidator
+             forFormatName:(NSString *)formatName
+{
+    if (!formatName) {
+        return;
+    }
+    if (!_customFormatValidators) {
+        _customFormatValidators = [[NSMutableDictionary alloc] init];
+    }
+    [_customFormatValidators setValue:formatValidator forKey:formatName];
 }
 
 // public
@@ -668,6 +801,19 @@ documentPathComponent:(id)pathComponent
         if ([self numberOfValidatingSchemasForValue:value context:context schemas:@[ not ]] != 0) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedNot message:@"Value must not validate against schema in not rule"];
         }
+    }
+
+    NSString *format = context[keyAnyFormat];
+    if (format) {
+        id<RIXJSONSchemaFormatValidator> formatValidator = _customFormatValidators[format];
+        if (!formatValidator) {
+            formatValidator = _defaultFormatValidators[format];
+        }
+        if (formatValidator) {
+            if (![formatValidator isValidValue:value forFormatName:format]) {
+                [context addErrorCode:RIXJSONSchemaValidatorErrorValueIncorrectFormat message:@"Value must conform to format \"%@\"", format];
+            }
+        } // unknown formats pass validation
     }
 }
 

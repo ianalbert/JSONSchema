@@ -10,47 +10,68 @@
         }
     },
     "patternProperties": {
-        "^i[0-9]+$": {
+        "^integer-[0-9]+$": {
             "$ref": "#/definitions/testIntegerValue"
         },
-        "^n[0-9]+$": {
+        "^number-[0-9]+$": {
             "$ref": "#/definitions/testNumberValue"
         },
-        "^b[0-9]+$": {
+        "^boolean-[0-9]+$": {
             "$ref": "#/definitions/testBooleanValue"
         },
-        "^s[0-9]+$": {
+        "^string-[0-9]+$": {
             "$ref": "#/definitions/testStringValue"
         },
-        "^a[0-9]+$": {
+        "^array-[0-9]+$": {
             "$ref": "#/definitions/testArrayValue"
         },
-        "^o[0-9]+$": {
+        "^object-[0-9]+$": {
             "$ref": "#/definitions/testObjectValue"
         },
-        "^es[0-9]+$": {
+        "^enum-string-[0-9]+$": {
             "$ref": "#/definitions/testStringEnumValue"
         },
-        "^ei[0-9]+$": {
+        "^enum-integer-[0-9]+$": {
             "$ref": "#/definitions/testIntegerEnumValue"
         },
-        "^any[0-9]+$": {
+        "^anyOf-[0-9]+$": {
             "$ref": "#/definitions/testAnyOfValue"
         },
-        "^all[0-9]+$": {
+        "^allOf-[0-9]+$": {
             "$ref": "#/definitions/testAllOfValue"
         },
-        "^one[0-9]+$": {
+        "^oneOf-[0-9]+$": {
             "$ref": "#/definitions/testOneOfValue"
         },
-        "^not[0-9]+$": {
+        "^not-[0-9]+$": {
             "$ref": "#/definitions/testNotValue"
         },
-        "^ad[0-9]+$": {
+        "^array-dependencies-[0-9]+$": {
             "$ref": "#/definitions/testArrayDependencyValue"
         },
-        "^sd[0-9]+$": {
+        "^schema-dependencies-[0-9]+$": {
             "$ref": "#/definitions/testSchemaDependencyValue"
+        },
+        "^format-date-time-[0-9]+$": {
+            "format": "date-time"
+        },
+        "^format-email-[0-9]+$": {
+            "format": "email"
+        },
+        "^format-hostname-[0-9]+$": {
+            "format": "hostname"
+        },
+        "^format-ipv4-[0-9]+$": {
+            "format": "ipv4"
+        },
+        "^format-ipv6-[0-9]+$": {
+            "format": "ipv6"
+        },
+        "^format-uri-[0-9]+$": {
+            "format": "uri"
+        },
+        "^format-custom-[0-9]+$": {
+            "format": "custom"
         }
     },
     "additionalProperties": false,

@@ -12,7 +12,6 @@
 		028B9E0418B1732D0032E8F2 /* test-schema-00.json in Resources */ = {isa = PBXBuildFile; fileRef = 028B9E0318B1732D0032E8F2 /* test-schema-00.json */; };
 		028B9E0618B1743B0032E8F2 /* test-doc-00.json in Resources */ = {isa = PBXBuildFile; fileRef = 028B9E0518B1743B0032E8F2 /* test-doc-00.json */; };
 		028B9E0818B2C3040032E8F2 /* test-schema-01.json in Resources */ = {isa = PBXBuildFile; fileRef = 028B9E0718B2C3040032E8F2 /* test-schema-01.json */; };
-		028B9E0A18B2E5030032E8F2 /* test-doc-01.json in Resources */ = {isa = PBXBuildFile; fileRef = 028B9E0918B2E5030032E8F2 /* test-doc-01.json */; };
 		028B9E0C18B455970032E8F2 /* test-doc-02.json in Resources */ = {isa = PBXBuildFile; fileRef = 028B9E0B18B455970032E8F2 /* test-doc-02.json */; };
 		028E216B1890BA7A008976E4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 028E216A1890BA7A008976E4 /* Foundation.framework */; };
 		028E216D1890BA7A008976E4 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 028E216C1890BA7A008976E4 /* CoreGraphics.framework */; };
@@ -46,7 +45,6 @@
 		028B9E0318B1732D0032E8F2 /* test-schema-00.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-schema-00.json"; sourceTree = "<group>"; };
 		028B9E0518B1743B0032E8F2 /* test-doc-00.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-doc-00.json"; sourceTree = "<group>"; };
 		028B9E0718B2C3040032E8F2 /* test-schema-01.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-schema-01.json"; sourceTree = "<group>"; };
-		028B9E0918B2E5030032E8F2 /* test-doc-01.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-doc-01.json"; sourceTree = "<group>"; };
 		028B9E0B18B455970032E8F2 /* test-doc-02.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = "test-doc-02.json"; sourceTree = "<group>"; };
 		028E21671890BA7A008976E4 /* JSONSchema.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = JSONSchema.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		028E216A1890BA7A008976E4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -99,7 +97,6 @@
 				028B9E0318B1732D0032E8F2 /* test-schema-00.json */,
 				028B9E0518B1743B0032E8F2 /* test-doc-00.json */,
 				028B9E0718B2C3040032E8F2 /* test-schema-01.json */,
-				028B9E0918B2E5030032E8F2 /* test-doc-01.json */,
 				028B9E0B18B455970032E8F2 /* test-doc-02.json */,
 			);
 			path = Resources;
@@ -275,7 +272,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				028B9E0618B1743B0032E8F2 /* test-doc-00.json in Resources */,
-				028B9E0A18B2E5030032E8F2 /* test-doc-01.json in Resources */,
 				028B9E0218B172F80032E8F2 /* json-schema-draft-04.json in Resources */,
 				028E218E1890BA7A008976E4 /* InfoPlist.strings in Resources */,
 				028B9E0818B2C3040032E8F2 /* test-schema-01.json in Resources */,
