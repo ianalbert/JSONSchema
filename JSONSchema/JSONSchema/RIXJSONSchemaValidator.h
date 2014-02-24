@@ -19,6 +19,14 @@ extern NSString *const RIXJSONSchemaValidatorErrorDomain;
  */
 extern NSString *const RIXJSONSchemaValidatorErrorJSONPointerKey;
 
+/**
+ * A userInfo key in an NSError of domain RIXJSONSchemaValidatorErrorDomain
+ * which contains an array of arrays of NSErrors (2D array). The elements in
+ * the first array dimension represents the subschema that issued errors, while
+ * the second array dimension represents individual errors in that subschema.
+ */
+extern NSString *const RIXJSONSchemaValidatorErrorSuberrorsKey;
+
 // NSError status codes for domain RIXJSONSchemaValidatorErrorDomain
 enum {
     /**

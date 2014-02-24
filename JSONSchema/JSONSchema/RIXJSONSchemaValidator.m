@@ -12,6 +12,7 @@
 
 NSString *const RIXJSONSchemaValidatorErrorDomain = @"RIXJSONSchemaValidatorError";
 NSString *const RIXJSONSchemaValidatorErrorJSONPointerKey = @"JSONPointer";
+NSString *const RIXJSONSchemaValidatorErrorSuberrorsKey = @"suberrors";
 
 typedef NS_ENUM(NSUInteger, RIXJSONDataType) {
     RIXJSONDataTypeUnknown = 0,
@@ -477,12 +478,30 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 - (void)addErrorCode:(NSInteger)errorCode
              message:(NSString *)pattern, ...
 {
+    va_list args;
+    va_start(args, pattern);
+    [self addErrorCode:errorCode suberrors:nil message:pattern args:args];
+    va_end(args);
+}
+
+- (void)addErrorCode:(NSInteger)errorCode
+           suberrors:(NSArray *)suberrors
+             message:(NSString *)pattern, ...
+{
+    va_list args;
+    va_start(args, pattern);
+    [self addErrorCode:errorCode suberrors:suberrors message:pattern args:args];
+    va_end(args);
+}
+
+- (void)addErrorCode:(NSInteger)errorCode
+           suberrors:(NSArray *)suberrors
+             message:(NSString *)pattern
+                args:(va_list)args
+{
     NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
     if (pattern) {
-        va_list args;
-        va_start(args, pattern);
         NSString *message = [[NSString alloc] initWithFormat:pattern arguments:args];
-        va_end(args);
         userInfo[NSLocalizedDescriptionKey] = message;
     }
     NSString *path;
@@ -496,6 +515,9 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
         }
     }
     userInfo[RIXJSONSchemaValidatorErrorJSONPointerKey] = path;
+    if (suberrors) {
+        userInfo[RIXJSONSchemaValidatorErrorSuberrorsKey] = suberrors;
+    }
     NSError *error = [NSError errorWithDomain:RIXJSONSchemaValidatorErrorDomain code:errorCode userInfo:userInfo];
     NSMutableArray *errors = [_errors lastObject];
     [errors addObject:error];
@@ -815,7 +837,7 @@ documentPathComponent:(id)pathComponent
     if (commonDataTypes == 0) {
         NSArray *valueTypeStrings = NSStringsFromRIXJSONDataType(possibleDataTypes);
         NSArray *allowedTypeStrings = NSStringsFromRIXJSONDataType(allowedDataTypes);
-        [context addErrorCode:RIXJSONSchemaValidatorErrorValueIncorrectType message:@"Value type(s) %@ do not match schema type(s) %@", [valueTypeStrings componentsJoinedByString:@", "], [allowedTypeStrings componentsJoinedByString:@", "]];
+        [context addErrorCode:RIXJSONSchemaValidatorErrorValueIncorrectType message:@"Value type(s) [ %@ ] do not match schema type(s) [ %@ ]", [valueTypeStrings componentsJoinedByString:@", "], [allowedTypeStrings componentsJoinedByString:@", "]];
     }
     if (commonDataTypes & (RIXJSONDataTypeNull | RIXJSONDataTypeBoolean)) {
         // Type is correct. Nothing more to validate.
@@ -842,28 +864,35 @@ documentPathComponent:(id)pathComponent
 
     id allOf = context[keyAnyAllOf];
     if ([allOf JSONDataType] == RIXJSONDataTypeArray) {
-        if ([self numberOfValidatingSchemasForValue:value context:context schemas:allOf] != [allOf count]) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAllOf message:@"Value must validate against all schemas in allOf rule"];
+        NSArray *suberrors;
+        NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:allOf suberrors:&suberrors];
+        if (matchCount != [allOf count]) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAllOf suberrors:suberrors message:@"Value must validate against all schemas in allOf rule"];
         }
     }
 
     id anyOf = context[keyAnyAnyOf];
     if ([anyOf JSONDataType] == RIXJSONDataTypeArray) {
-        if ([self numberOfValidatingSchemasForValue:value context:context schemas:anyOf] == 0) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAnyOf message:@"Value must validate against at least one schema in anyOf rule"];
+        NSArray *suberrors;
+        NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:anyOf suberrors:&suberrors];
+        if (matchCount == 0) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAnyOf suberrors:suberrors message:@"Value must validate against at least one schema in anyOf rule"];
         }
     }
 
     id oneOf = context[keyAnyOneOf];
     if ([oneOf JSONDataType] == RIXJSONDataTypeArray) {
-        if ([self numberOfValidatingSchemasForValue:value context:context schemas:oneOf] != 1) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedOneOf message:@"Value must validate against exactly one schema in oneOf rule"];
+        NSArray *suberrors;
+        NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:oneOf suberrors:&suberrors];
+        if (matchCount != 1) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedOneOf suberrors:suberrors message:@"Value must validate against exactly one schema in oneOf rule"];
         }
     }
 
     id not = context[keyAnyNot];
     if ([not JSONDataType] == RIXJSONDataTypeObject) {
-        if ([self numberOfValidatingSchemasForValue:value context:context schemas:@[ not ]] != 0) {
+        NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:@[ not ] suberrors:nil];
+        if (matchCount != 0) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedNot message:@"Value must not validate against schema in not rule"];
         }
     }
@@ -885,14 +914,19 @@ documentPathComponent:(id)pathComponent
 - (NSUInteger)numberOfValidatingSchemasForValue:(id)value
                                         context:(RIXJSONSchemaValidatorContext *)context
                                         schemas:(NSArray *)schemas
+                                      suberrors:(out NSArray *__autoreleasing *)suberrorsOut
 {
     __block NSUInteger count = 0;
+    NSMutableArray *allSuberrors = [[NSMutableArray alloc] init];
     [schemas enumerateObjectsUsingBlock:^(id schema, NSUInteger index, BOOL *stop) {
         if ([schema JSONDataType] == RIXJSONDataTypeObject) {
             [context pushErrors];
-            [context pushSchema:schema documentPathComponent:nil schemaPathSegment:[NSString stringWithFormat:@"%@/%li", keyAnyAllOf, index]];
+            [context pushSchema:schema documentPathComponent:nil schemaPathSegment:[NSString stringWithFormat:@"%@/%li", keyAnyAllOf, (long)index]];
             [self validateJSONValue:value context:context];
             NSArray *suberrors = [context currentErrors];
+            if (suberrors.count > 0) {
+                [allSuberrors addObject:suberrors];
+            }
             [context pop];
             [context popErrors];
             if (suberrors.count == 0) {
@@ -900,6 +934,9 @@ documentPathComponent:(id)pathComponent
             }
         }
     }];
+    if (suberrorsOut) {
+        *suberrorsOut = allSuberrors;
+    }
     return count;
 }
 
@@ -1100,15 +1137,14 @@ documentPathComponent:(id)pathComponent
     NSNumber *minimum = context[keyNumberMinimum];
     BOOL exclusiveMinimum = [context boolForKey:keyNumberExclusiveMinimum orDefault:NO];
     if (minimum) {
-        double min = [minimum doubleValue];
         if (exclusiveMinimum) {
-            if (val <= min) {
-                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberBelowMinimum message:@"%f must be greater than %f", val, min];
+            if ([number compare:minimum] != NSOrderedDescending) {
+                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberBelowMinimum message:@"%@ must be greater than %@", number, minimum];
             }
         }
         else {
-            if (val < min) {
-                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberBelowMinimum message:@"%f must be greater than or equal to %f", val, min];
+            if ([number compare:minimum] == NSOrderedAscending) {
+                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberBelowMinimum message:@"%@ must be greater than or equal to %@", number, minimum];
             }
         }
     }
@@ -1116,15 +1152,14 @@ documentPathComponent:(id)pathComponent
     NSNumber *maximum = context[keyNumberMaximum];
     BOOL exclusiveMaximum = [context boolForKey:keyNumberExclusiveMaximum orDefault:NO];
     if (maximum) {
-        double max = [maximum doubleValue];
         if (exclusiveMaximum) {
-            if (val >= max) {
-                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberAboveMaximum message:@"%f must be less than %f", val, max];
+            if ([number compare:maximum] != NSOrderedAscending) {
+                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberAboveMaximum message:@"%@ must be less than %@", number, maximum];
             }
         }
         else {
-            if (val > max) {
-                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberAboveMaximum message:@"%f must be less than or equal to %f", val, max];
+            if ([number compare:maximum] == NSOrderedDescending) {
+                [context addErrorCode:RIXJSONSchemaValidatorErrorNumberAboveMaximum message:@"%@ must be less than or equal to %@", number, maximum];
             }
         }
     }
