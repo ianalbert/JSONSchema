@@ -4,7 +4,10 @@
 
     "definitions": {
         "referencedSchema": {
-            "$ref": "#/definitions/localReference"
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/localReference"
+            }
         },
         "localReference": {
             "type": "string",

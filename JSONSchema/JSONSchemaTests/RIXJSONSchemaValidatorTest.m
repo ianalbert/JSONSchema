@@ -218,7 +218,8 @@
     [validator addURIResolver:URIResolver];
     NSMutableArray *errors = [[validator validateJSONValue:doc] mutableCopy];
 
-    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/illegalValue00");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorCannotResolveSchemaURI, @"/invalidReference");
+    RIXAssertErrorExists(RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern, @"/illegalValue00/a");
     RIXAssertErrorExists(RIXJSONSchemaValidatorErrorValueIncorrectType, @"/illegalValue01");
 
     XCTAssertEqualObjects(@[], errors, @"");

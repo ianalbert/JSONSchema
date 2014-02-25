@@ -1,6 +1,15 @@
 {
-    "legalValue00": "abc123",
-    "legalValue01": "xyz987",
-    "illegalValue00": "123abc",
-    "illegalValue01": 3.14
+    "legalValue00": {
+        "a": "abc123",
+        "b": "def654",
+        "c": "jfh234"
+    },
+    "legalValue01": {
+        "foo": "xyz987"
+    },
+    "illegalValue00": {
+        "a": "123abc"
+    },
+    "illegalValue01": 3.14,
+    "invalidReference": true
 }

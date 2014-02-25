@@ -462,6 +462,23 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 
 @end
 
+@interface RIXJSONSchemaValidatorContext : NSObject
+
+@property (nonatomic, weak) RIXJSONSchemaValidator *validator;
+@property (nonatomic, strong) NSMutableArray *errors; // NSArray[] of NSError[]
+@property (nonatomic, strong) NSMutableArray *schemaStack; // RIXJSONSchemaValidatorSchema[]
+@property (nonatomic, strong) NSMutableArray *currentJSONPath; // NSString or NSNumber
+
+- (NSArray *)currentErrors;
+- (void)addErrorCode:(NSInteger)errorCode
+             message:(NSString *)pattern, ...;
+- (void)addErrorCode:(NSInteger)errorCode
+           suberrors:(NSArray *)suberrors
+              unique:(BOOL)unique
+             message:(NSString *)pattern, ...;
+
+@end
+
 @implementation RIXJSONSchemaValidatorSchema
 
 - (instancetype)initWithSchema:(NSDictionary *)schema
@@ -487,11 +504,13 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 }
 
 - (id)objectForKey:(NSString *)key
+           context:(RIXJSONSchemaValidatorContext *)context
 {
-    return [self objectForKey:key resolvedURI:nil];
+    return [self objectForKey:key context:context resolvedURI:nil];
 }
 
 - (id)objectForKey:(NSString *)key
+           context:(RIXJSONSchemaValidatorContext *)context
        resolvedURI:(out NSURL *__autoreleasing *)resolvedURI
 {
     id val = _schema[key];
@@ -504,14 +523,18 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
     }
     if (_nextSchema) {
         // Value was in the next schema (or somewhere down the chain)
-        val = [_nextSchema objectForKey:key resolvedURI:resolvedURI];
+        val = [_nextSchema objectForKey:key context:context resolvedURI:resolvedURI];
         return val;
     }
     id ref = _schema[keyMainRef];
     if (ref) {
         NSURL *nextURI = [_URI URIRelativeToJSONReference:ref];
         _nextSchema = [_validator schemaForURI:nextURI];
-        val = [_nextSchema objectForKey:key resolvedURI:resolvedURI];
+        if (!_nextSchema) {
+            [context addErrorCode:RIXJSONSchemaValidatorErrorCannotResolveSchemaURI suberrors:nil unique:YES message:@"Could not resolve URI %@", [nextURI absoluteString]];
+            return nil;
+        }
+        val = [_nextSchema objectForKey:key context:context resolvedURI:resolvedURI];
         return val;
     }
     // No such value in this flat schema
@@ -535,15 +558,15 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
     return subschema;
 }
 
-- (BOOL)boolForKey:(NSString *)key
+- (BOOL)boolForKey:(NSString *)key context:(RIXJSONSchemaValidatorContext *)context
 {
-    id elem = [self objectForKey:key];
+    id elem = [self objectForKey:key context:context];
     return ([elem isKindOfClass:[NSNumber class]]) ? [elem boolValue] : NO;
 }
 
-- (NSUInteger)allowedDataTypes
+- (NSUInteger)allowedDataTypesWithContext:(RIXJSONSchemaValidatorContext *)context
 {
-    id elem = [self objectForKey:keyAnyType];
+    id elem = [self objectForKey:keyAnyType context:context];
     if (!elem) {
         return RIXJSONDataTypeMaskAll;
     }
@@ -561,15 +584,6 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 @end
 
 
-
-@interface RIXJSONSchemaValidatorContext : NSObject
-
-@property (nonatomic, weak) RIXJSONSchemaValidator *validator;
-@property (nonatomic, strong) NSMutableArray *errors; // NSArray[] of NSError[]
-@property (nonatomic, strong) NSMutableArray *schemaStack; // RIXJSONSchemaValidatorSchema[]
-@property (nonatomic, strong) NSMutableArray *currentJSONPath; // NSString or NSNumber
-
-@end
 
 @implementation RIXJSONSchemaValidatorContext
 
@@ -593,22 +607,24 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 {
     va_list args;
     va_start(args, pattern);
-    [self addErrorCode:errorCode suberrors:nil message:pattern args:args];
+    [self addErrorCode:errorCode suberrors:nil unique:NO message:pattern args:args];
     va_end(args);
 }
 
 - (void)addErrorCode:(NSInteger)errorCode
            suberrors:(NSArray *)suberrors
+              unique:(BOOL)unique
              message:(NSString *)pattern, ...
 {
     va_list args;
     va_start(args, pattern);
-    [self addErrorCode:errorCode suberrors:suberrors message:pattern args:args];
+    [self addErrorCode:errorCode suberrors:suberrors unique:unique message:pattern args:args];
     va_end(args);
 }
 
 - (void)addErrorCode:(NSInteger)errorCode
            suberrors:(NSArray *)suberrors
+              unique:(BOOL)unique
              message:(NSString *)pattern
                 args:(va_list)args
 {
@@ -633,6 +649,14 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
     }
     NSError *error = [NSError errorWithDomain:RIXJSONSchemaValidatorErrorDomain code:errorCode userInfo:userInfo];
     NSMutableArray *errors = [_errors lastObject];
+    if (unique) {
+        for (NSError *existingError in errors) {
+            if (existingError.code == error.code && [existingError.userInfo[RIXJSONSchemaValidatorErrorJSONPointerKey] isEqual:path] && [existingError.localizedDescription isEqual:error.localizedDescription]) {
+                // Already exists
+                return;
+            }
+        }
+    }
     [errors addObject:error];
     [errors objectAtIndexedSubscript:0];
 }
@@ -919,7 +943,7 @@ documentPathComponent:(id)pathComponent
         [context addErrorCode:RIXJSONSchemaValidatorErrorJSONIllegalValueType message:@"Value not a legal JSON value class (%@)", [value class]];
         return;
     }
-    NSUInteger allowedDataTypes = [[context currentSchema] allowedDataTypes];
+    NSUInteger allowedDataTypes = [[context currentSchema] allowedDataTypesWithContext:context];
     NSUInteger commonDataTypes = possibleDataTypes & allowedDataTypes;
     if (commonDataTypes == 0) {
         NSArray *valueTypeStrings = NSStringsFromRIXJSONDataType(possibleDataTypes);
@@ -942,7 +966,7 @@ documentPathComponent:(id)pathComponent
         [self validateJSONNumber:value context:context];
     }
 
-    id enumv = [[context currentSchema] objectForKey:keyAnyEnum];
+    id enumv = [[context currentSchema] objectForKey:keyAnyEnum context:context];
     if ([enumv JSONDataType] == RIXJSONDataTypeArray) {
         if (![enumv containsObject:value]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorValueNotInEnum message:@"Value must be one of the values defined by the enum"];
@@ -950,37 +974,37 @@ documentPathComponent:(id)pathComponent
     }
 
     NSURL *allOfURI;
-    id allOf = [[context currentSchema] objectForKey:keyAnyAllOf resolvedURI:&allOfURI];
+    id allOf = [[context currentSchema] objectForKey:keyAnyAllOf context:context resolvedURI:&allOfURI];
     if ([allOf JSONDataType] == RIXJSONDataTypeArray) {
         NSArray *suberrors;
         NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:allOf URI:[allOfURI URIByAppendingJSONPathSegments:keyAnyAllOf, nil] suberrors:&suberrors];
         if (matchCount != [allOf count]) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAllOf suberrors:suberrors message:@"Value must validate against all schemas in allOf rule"];
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAllOf suberrors:suberrors unique:NO message:@"Value must validate against all schemas in allOf rule"];
         }
     }
 
     NSURL *anyOfURI;
-    id anyOf = [[context currentSchema] objectForKey:keyAnyAnyOf resolvedURI:&anyOfURI];
+    id anyOf = [[context currentSchema] objectForKey:keyAnyAnyOf context:context resolvedURI:&anyOfURI];
     if ([anyOf JSONDataType] == RIXJSONDataTypeArray) {
         NSArray *suberrors;
         NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:anyOf URI:[anyOfURI URIByAppendingJSONPathSegments:keyAnyAnyOf, nil] suberrors:&suberrors];
         if (matchCount == 0) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAnyOf suberrors:suberrors message:@"Value must validate against at least one schema in anyOf rule"];
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedAnyOf suberrors:suberrors unique:NO message:@"Value must validate against at least one schema in anyOf rule"];
         }
     }
 
     NSURL *oneOfURI;
-    id oneOf = [[context currentSchema] objectForKey:keyAnyOneOf resolvedURI:&oneOfURI];
+    id oneOf = [[context currentSchema] objectForKey:keyAnyOneOf context:context resolvedURI:&oneOfURI];
     if ([oneOf JSONDataType] == RIXJSONDataTypeArray) {
         NSArray *suberrors;
         NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:oneOf URI:[oneOfURI URIByAppendingJSONPathSegments:keyAnyOneOf, nil] suberrors:&suberrors];
         if (matchCount != 1) {
-            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedOneOf suberrors:suberrors message:@"Value must validate against exactly one schema in oneOf rule"];
+            [context addErrorCode:RIXJSONSchemaValidatorErrorValueFailedOneOf suberrors:suberrors unique:NO message:@"Value must validate against exactly one schema in oneOf rule"];
         }
     }
 
     NSURL *notURI;
-    id not = [[context currentSchema] objectForKey:keyAnyNot resolvedURI:&notURI];
+    id not = [[context currentSchema] objectForKey:keyAnyNot context:context resolvedURI:&notURI];
     if ([not JSONDataType] == RIXJSONDataTypeObject) {
         NSUInteger matchCount = [self numberOfValidatingSchemasForValue:value context:context schemas:@[ not ] URI:[notURI URIByAppendingJSONPathSegments:keyAnyNot, nil] suberrors:nil];
         if (matchCount != 0) {
@@ -988,7 +1012,7 @@ documentPathComponent:(id)pathComponent
         }
     }
 
-    NSString *format = [[context currentSchema] objectForKey:keyAnyFormat];
+    NSString *format = [[context currentSchema] objectForKey:keyAnyFormat context:context];
     if (format) {
         id<RIXJSONSchemaFormatValidator> formatValidator = _customFormatValidators[format];
         if (!formatValidator) {
@@ -1037,21 +1061,21 @@ documentPathComponent:(id)pathComponent
 - (void)validateJSONObject:(NSDictionary *)object
                    context:(RIXJSONSchemaValidatorContext *)context
 {
-    NSNumber *minProperties = [[context currentSchema] objectForKey:keyObjectMinProperties];
+    NSNumber *minProperties = [[context currentSchema] objectForKey:keyObjectMinProperties context:context];
     if (minProperties) {
         if (object.count < [minProperties integerValue]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorObjectTooFewProperties message:@"Object must have at least %i properties", [minProperties integerValue]];
         }
     }
 
-    NSNumber *maxProperties = [[context currentSchema] objectForKey:keyObjectMaxProperties];
+    NSNumber *maxProperties = [[context currentSchema] objectForKey:keyObjectMaxProperties context:context];
     if (maxProperties) {
         if (object.count > [maxProperties integerValue]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorObjectTooManyProperties message:@"Object must have no more than %i properties", [maxProperties integerValue]];
         }
     }
 
-    NSArray *required = [[context currentSchema] objectForKey:keyObjectRequired];
+    NSArray *required = [[context currentSchema] objectForKey:keyObjectRequired context:context];
     if (required) {
         for (NSString *key in required) {
             if (!object[key]) {
@@ -1061,11 +1085,11 @@ documentPathComponent:(id)pathComponent
     }
 
     NSURL *propertiesURI;
-    NSDictionary *properties = [[context currentSchema] objectForKey:keyObjectProperties resolvedURI:&propertiesURI];
+    NSDictionary *properties = [[context currentSchema] objectForKey:keyObjectProperties context:context resolvedURI:&propertiesURI];
     NSURL *patternPropertiesURI;
-    NSDictionary *patternProperties = [[context currentSchema] objectForKey:keyObjectPatternProperties resolvedURI:&patternPropertiesURI];
+    NSDictionary *patternProperties = [[context currentSchema] objectForKey:keyObjectPatternProperties context:context resolvedURI:&patternPropertiesURI];
     NSURL *additionalPropertiesURI;
-    id additionalProperties = [[context currentSchema] objectForKey:keyObjectAdditionalProperties resolvedURI:&additionalPropertiesURI];
+    id additionalProperties = [[context currentSchema] objectForKey:keyObjectAdditionalProperties context:context resolvedURI:&additionalPropertiesURI];
     [object enumerateKeysAndObjectsUsingBlock:^(NSString *propertyName, id propertyValue, BOOL *stop) {
         __block BOOL schemaFound = NO;
         NSDictionary *propertySchema = properties[propertyName];
@@ -1115,7 +1139,7 @@ documentPathComponent:(id)pathComponent
     }];
 
     NSURL *dependenciesURI;
-    NSDictionary *dependencies = [[context currentSchema] objectForKey:keyObjectDependencies resolvedURI:&dependenciesURI];
+    NSDictionary *dependencies = [[context currentSchema] objectForKey:keyObjectDependencies context:context resolvedURI:&dependenciesURI];
     if (dependencies) {
         [dependencies enumerateKeysAndObjectsUsingBlock:^(NSString *key, id obj, BOOL *stop) {
             if (!object[key]) {
@@ -1150,21 +1174,21 @@ documentPathComponent:(id)pathComponent
 - (void)validateJSONArray:(NSArray *)array
                   context:(RIXJSONSchemaValidatorContext *)context
 {
-    NSNumber *minItems = [[context currentSchema] objectForKey:keyArrayMinItems];
+    NSNumber *minItems = [[context currentSchema] objectForKey:keyArrayMinItems context:context];
     if (minItems) {
         if (array.count < [minItems integerValue]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorArrayTooFewElements message:@"Array must have at least %i elements", [minItems integerValue]];
         }
     }
 
-    NSNumber *maxItems = [[context currentSchema] objectForKey:keyArrayMaxItems];
+    NSNumber *maxItems = [[context currentSchema] objectForKey:keyArrayMaxItems context:context];
     if (maxItems) {
         if (array.count > [maxItems integerValue]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorArrayTooManyElements message:@"Array must have no more than %i elements", [maxItems integerValue]];
         }
     }
 
-    BOOL uniqueItems = [[context currentSchema] boolForKey:keyArrayUniqueItems];
+    BOOL uniqueItems = [[context currentSchema] boolForKey:keyArrayUniqueItems context:context];
     if (uniqueItems) {
         NSMutableSet *set = [[NSMutableSet alloc] initWithArray:array];
         if (set.count != array.count) {
@@ -1173,11 +1197,11 @@ documentPathComponent:(id)pathComponent
     }
 
     NSURL *itemsURI;
-    id items = [[context currentSchema] objectForKey:keyArrayItems resolvedURI:&itemsURI];
+    id items = [[context currentSchema] objectForKey:keyArrayItems context:context resolvedURI:&itemsURI];
     NSDictionary *singleItemSchema = ([items isKindOfClass:[NSDictionary class]]) ? items : nil;
     NSArray *multipleItemSchemas = ([items isKindOfClass:[NSArray class]]) ? items : nil;
     NSURL *additionalItemsURI;
-    id additionalItems = [[context currentSchema] objectForKey:keyArrayAdditionalItems resolvedURI:&additionalItemsURI];
+    id additionalItems = [[context currentSchema] objectForKey:keyArrayAdditionalItems context:context resolvedURI:&additionalItemsURI];
     BOOL allowAdditionalItems = (![additionalItems isKindOfClass:[NSNumber class]] || [additionalItems boolValue]);
     NSDictionary *additionalItemSchema = ([additionalItems isKindOfClass:[NSDictionary class]]) ? additionalItems : nil;
     [array enumerateObjectsUsingBlock:^(id element, NSUInteger index, BOOL *stop) {
@@ -1213,7 +1237,7 @@ documentPathComponent:(id)pathComponent
 {
     double val = [number doubleValue];
 
-    NSNumber *multipleOf = [[context currentSchema] objectForKey:keyNumberMultipleOf];
+    NSNumber *multipleOf = [[context currentSchema] objectForKey:keyNumberMultipleOf context:context];
     if (multipleOf) {
         if (([number JSONDataType] & RIXJSONDataTypeInteger) && ([multipleOf JSONDataType] & RIXJSONDataTypeInteger)) {
             // Do an integer modulo if possible
@@ -1236,8 +1260,8 @@ documentPathComponent:(id)pathComponent
         }
     }
 
-    NSNumber *minimum =[[context currentSchema] objectForKey:keyNumberMinimum];
-    BOOL exclusiveMinimum = [[context currentSchema] boolForKey:keyNumberExclusiveMinimum];
+    NSNumber *minimum =[[context currentSchema] objectForKey:keyNumberMinimum context:context];
+    BOOL exclusiveMinimum = [[context currentSchema] boolForKey:keyNumberExclusiveMinimum context:context];
     if (minimum) {
         if (exclusiveMinimum) {
             if ([number compare:minimum] != NSOrderedDescending) {
@@ -1251,8 +1275,8 @@ documentPathComponent:(id)pathComponent
         }
     }
 
-    NSNumber *maximum = [[context currentSchema] objectForKey:keyNumberMaximum];
-    BOOL exclusiveMaximum = [[context currentSchema] boolForKey:keyNumberExclusiveMaximum];
+    NSNumber *maximum = [[context currentSchema] objectForKey:keyNumberMaximum context:context];
+    BOOL exclusiveMaximum = [[context currentSchema] boolForKey:keyNumberExclusiveMaximum context:context];
     if (maximum) {
         if (exclusiveMaximum) {
             if ([number compare:maximum] != NSOrderedAscending) {
@@ -1270,21 +1294,21 @@ documentPathComponent:(id)pathComponent
 - (void)validateJSONString:(NSString *)string
                    context:(RIXJSONSchemaValidatorContext *)context
 {
-    NSNumber *minLength = [[context currentSchema] objectForKey:keyStringMinLength];
+    NSNumber *minLength = [[context currentSchema] objectForKey:keyStringMinLength context:context];
     if (minLength) {
         if (string.length < [minLength integerValue]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorStringShorterThanMinimumLength message:@"String must be at least %i characters", [minLength integerValue]];
         }
     }
 
-    NSNumber *maxLength = [[context currentSchema] objectForKey:keyStringMaxLength];
+    NSNumber *maxLength = [[context currentSchema] objectForKey:keyStringMaxLength context:context];
     if (maxLength) {
         if (string.length > [maxLength integerValue]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorStringLongerThanMaximumLength message:@"String must be no more than %i characters", [maxLength integerValue]];
         }
     }
 
-    NSString *pattern = [[context currentSchema] objectForKey:keyStringPattern];
+    NSString *pattern = [[context currentSchema] objectForKey:keyStringPattern context:context];
     if (pattern) {
         if (![self doesString:string matchPattern:pattern]) {
             [context addErrorCode:RIXJSONSchemaValidatorErrorStringDoesNotMatchPattern message:@"String must match regular expression /%@/", pattern];
