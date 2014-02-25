@@ -4,6 +4,9 @@
 
     "definitions": {
         "referencedSchema": {
+            "$ref": "#/definitions/localReference"
+        },
+        "localReference": {
             "type": "string",
             "pattern": "^[a-z]{3}[0-9]{3}$"
         }
