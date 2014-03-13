@@ -419,7 +419,7 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 }
 - (NSString *)JSONPointer
 {
-    NSString *fragment = [self.fragment stringByRemovingPercentEncoding];
+    NSString *fragment = [self.fragment stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     if (fragment.length == 0) {
         return @"";
     }
