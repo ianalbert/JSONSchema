@@ -1,5 +1,5 @@
 {
-    "id": "local://complete.json#",
+    "id": "local:///complete.json#",
     "type": "object",
     "properties": {
         "requiredProperty": {

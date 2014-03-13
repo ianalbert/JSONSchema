@@ -59,7 +59,7 @@
     NSDictionary *JSONSchema = [self loadJSONWithName:@"json-schema-draft-04"];
     RIXJSONSchemaValidator *schemaValidator = [[RIXJSONSchemaValidator alloc] initWithSchema:JSONSchema];
     NSArray *errors = [schemaValidator validateJSONValue:schema];
-    if (errors) {
+    if (errors.count > 0) {
         NSLog(@"Invalid schema:\n%@", errors);
     }
     return (errors.count == 0);

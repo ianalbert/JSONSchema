@@ -320,6 +320,79 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 }
 @end
 
+@interface RIXURLComponents : NSObject
+
+@property (nonatomic, copy) NSString *scheme;
+@property (nonatomic, copy) NSString *user;
+@property (nonatomic, copy) NSString *password;
+@property (nonatomic, copy) NSString *host;
+@property (nonatomic, copy) NSNumber *port;
+@property (nonatomic, copy) NSString *path;
+@property (nonatomic, copy) NSString *query;
+@property (nonatomic, copy) NSString *fragment;
+
+@end
+
+@implementation RIXURLComponents
+
+- (instancetype)initWithURL:(NSURL *)URL
+{
+    self = [super init];
+    if (self) {
+        if (!URL) {
+            return nil;
+        }
+        self.scheme = URL.scheme;
+        self.user = URL.user;
+        self.password = URL.password;
+        self.host = URL.host;
+        self.port = URL.port;
+        self.path = URL.path;
+        self.query = URL.query;
+        self.fragment = URL.fragment;
+    }
+    return self;
+}
+
+- (NSURL *)URL
+{
+    NSMutableString *str = [[NSMutableString alloc] init];
+    if (self.scheme) {
+        [str appendString:self.scheme];
+        [str appendString:@":"];
+    }
+    if (self.user || self.password || self.host || self.port || self.path) {
+        [str appendString:@"//"];
+    }
+    if (self.user && self.password) {
+        [str appendString:[self.user stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+        [str appendString:@":"];
+        [str appendString:[self.password stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+        [str appendString:@"@"];
+    }
+    if (self.host) {
+        [str appendString:self.host];
+    }
+    if (self.port) {
+        [str appendString:@":"];
+        [str appendString:[self.port stringValue]];
+    }
+    if (self.path.length > 0) {
+        [str appendString:self.path];
+    }
+    if (self.query) {
+        [str appendString:@"?"];
+        [str appendString:self.query];
+    }
+    if (self.fragment) {
+        [str appendString:@"#"];
+        [str appendString:self.fragment];
+    }
+    return [NSURL URLWithString:str];
+}
+
+@end
+
 @implementation NSURL (RIXJSONSchemaValidator)
 - (NSString *)absoluteStringWithoutFragment
 {
@@ -337,7 +410,7 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
 }
 - (NSURL *)normalizedRootJSONSchemaURI
 {
-    NSURLComponents *components = [[NSURLComponents alloc] initWithURL:self resolvingAgainstBaseURL:YES];
+    RIXURLComponents *components = [[RIXURLComponents alloc] initWithURL:self];
     if ([components.fragment isEqualToString:@""]) {
         return self;
     }
@@ -390,7 +463,7 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
         [segments addObject:[arg description]];
     }
     va_end(args);
-    NSURLComponents *components = [[NSURLComponents alloc] initWithURL:self resolvingAgainstBaseURL:NO];
+    RIXURLComponents *components = [[RIXURLComponents alloc] initWithURL:self];
     if (segments.count == 0) {
         components.fragment = @"";
     }
@@ -415,11 +488,11 @@ NSArray* NSStringsFromRIXJSONDataType(RIXJSONDataType dataType) {
         return newURL;
     }
     // Same base URL. Resolve fragment.
-    NSURLComponents *oldComponents = [[NSURLComponents alloc] initWithURL:self resolvingAgainstBaseURL:YES];
-    NSURLComponents *newComponents = [[NSURLComponents alloc] initWithURL:newURL resolvingAgainstBaseURL:YES];
+    RIXURLComponents *oldComponents = [[RIXURLComponents alloc] initWithURL:self];
+    RIXURLComponents *newComponents = [[RIXURLComponents alloc] initWithURL:newURL];
     if (oldComponents.fragment.length > 0) {
         if (newComponents.fragment) {
-            if (![newComponents.fragment hasPrefix:@"/"]) {
+            if (![newComponents.fragment hasPrefix:@"/"] && newComponents.fragment.length > 0) {
                 // New fragment is relative. Resolve against old fragment
                 // "/", "foo/bar" -> "//foo/bar"
                 // "blah", "bloo"
@@ -1327,7 +1400,14 @@ documentPathComponent:(id)pathComponent
     for (id<RIXJSONSchemaValidatorURIResolver> URIResolver in _URIResolvers) {
         NSDictionary *schemaJSON = [URIResolver schemaForURI:rootURI];
         if (schemaJSON) {
-            schema = [[RIXJSONSchemaValidatorSchema alloc] initWithSchema:schemaJSON URI:rootURI validator:self];
+            NSURL *schemaURI = rootURI;
+            NSString *reportedURIString = schemaJSON[keyMainID];
+            NSURL *reportedURI = [[NSURL URLWithString:reportedURIString] normalizedRootJSONSchemaURI];
+            if (reportedURI) {
+                schemaURI = reportedURI;
+            }
+            schema = [[RIXJSONSchemaValidatorSchema alloc] initWithSchema:schemaJSON URI:schemaURI validator:self];
+            _URIToSchema[schemaURI] = schema;
             _URIToSchema[rootURI] = schema;
             RIXJSONSchemaValidatorSchema *retVal = [schema schemaAtJSONPointer:[URI JSONPointer]];
             return retVal;
