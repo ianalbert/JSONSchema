@@ -44,6 +44,11 @@ enum {
      */
     RIXJSONSchemaValidatorErrorJSONIllegalValueType,
     /**
+     * A referenced schema could not be resolved. This means a $ref URI was
+     * invalid or could not be loaded by any registered URI resolvers.
+     */
+    RIXJSONSchemaValidatorErrorCannotResolveSchemaURI,
+    /**
      * A value was encountered that did not match one of the permitted types
      * in a "type" rule.
      * @see http://tools.ietf.org/html/draft-fge-json-schema-validation-00#section-5.5.2
